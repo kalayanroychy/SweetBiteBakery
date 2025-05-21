@@ -37,9 +37,9 @@ const CartSidebar = ({ isOpen, setIsOpen }: CartSidebarProps) => {
       />
       
       {/* Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-gradient-to-b from-[#faf6f1] to-white shadow-xl overflow-y-auto translate-x-0 transition-transform duration-300 ease-in-out border-l border-[#e3d9c8]">
+      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl overflow-y-auto translate-x-0 transition-transform duration-300 ease-in-out border-l border-[#e3d9c8] z-50">
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-[#faf6f1] to-white backdrop-blur-sm z-10 px-7 py-6 flex justify-between items-center border-b border-[#e3d9c8]">
+        <div className="sticky top-0 bg-white px-7 py-6 flex justify-between items-center border-b border-[#e3d9c8]">
           <h2 className="font-heading text-2xl font-bold text-primary">Your Cart</h2>
           <button 
             className="rounded-full p-2 text-primary hover:bg-neutral transition-colors" 
