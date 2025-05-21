@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Link } from 'wouter';
-import { X } from 'lucide-react';
+import { X, ShoppingBag, ArrowRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useCart } from '@/hooks/use-cart';
 import CartItem from './CartItem';
@@ -30,65 +30,91 @@ const CartSidebar = ({ isOpen, setIsOpen }: CartSidebarProps) => {
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
+      {/* Backdrop with blur effect */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
         onClick={() => setIsOpen(false)}
       />
       
       {/* Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl p-6 overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
+      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-gradient-to-b from-[#faf6f1] to-white shadow-xl overflow-y-auto translate-x-0 transition-transform duration-300 ease-in-out border-l border-[#e3d9c8]">
+        {/* Header */}
+        <div className="sticky top-0 bg-gradient-to-r from-[#faf6f1] to-white backdrop-blur-sm z-10 px-7 py-6 flex justify-between items-center border-b border-[#e3d9c8]">
           <h2 className="font-heading text-2xl font-bold text-primary">Your Cart</h2>
           <button 
-            className="text-gray-500 hover:text-primary" 
+            className="rounded-full p-2 text-primary hover:bg-neutral transition-colors" 
             onClick={() => setIsOpen(false)}
+            aria-label="Close cart"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
         
-        <div className="mb-6">
+        <div className="p-7">
           {cart.items.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">Your cart is empty</p>
+            <div className="text-center py-12 px-4">
+              <div className="mb-5 flex justify-center">
+                <div className="w-20 h-20 rounded-full bg-neutral flex items-center justify-center text-primary">
+                  <ShoppingBag size={36} />
+                </div>
+              </div>
+              <h3 className="font-heading text-xl font-semibold text-text-dark mb-3">Your Cart is Empty</h3>
+              <p className="text-gray-500 mb-6">Looks like you haven't added anything to your cart yet.</p>
               <Button 
                 onClick={() => setIsOpen(false)}
-                className="bg-primary text-white hover:bg-opacity-90"
+                className="bg-primary text-white hover:bg-primary/90 transition-all px-8 py-6 rounded-xl font-medium text-base"
               >
                 Continue Shopping
               </Button>
             </div>
           ) : (
             <>
-              <div className="max-h-[calc(100vh-250px)] overflow-y-auto mb-4">
+              <div className="max-h-[calc(100vh-250px)] overflow-y-auto mb-6 pr-1">
                 {cart.items.map((item) => (
                   <CartItem key={item.productId} item={item} />
                 ))}
               </div>
               
-              <div className="pt-4 border-t border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="font-semibold">Subtotal:</span>
-                  <span className="font-bold text-lg">{formatCurrency(cart.subtotal)}</span>
+              {/* Cart Summary */}
+              <div className="sticky bottom-0 pt-5 border-t border-[#e3d9c8] bg-gradient-to-r from-[#faf6f1] to-white backdrop-blur-sm">
+                <div className="space-y-3 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-semibold">{formatCurrency(cart.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Shipping</span>
+                    <span className="font-semibold">Free</span>
+                  </div>
+                  <div className="flex justify-between items-center font-bold text-lg pt-2 border-t border-[#e3d9c8]">
+                    <span>Total</span>
+                    <span className="text-primary">{formatCurrency(cart.subtotal)}</span>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mb-4">Shipping and taxes calculated at checkout</p>
-                <div className="grid grid-cols-2 gap-4">
+
+                <p className="text-sm text-gray-500 mb-5 italic">Taxes calculated at checkout</p>
+
+                <div className="space-y-3">
                   <Link href="/cart">
-                    <Button
-                      onClick={() => setIsOpen(false)}
-                      className="w-full bg-primary text-white hover:bg-opacity-90"
-                    >
-                      View Cart
-                    </Button>
+                    <div className="w-full">
+                      <Button
+                        onClick={() => setIsOpen(false)}
+                        variant="outline"
+                        className="w-full border-primary text-primary hover:bg-primary/5 transition-all py-6 rounded-xl font-medium text-base"
+                      >
+                        View Cart
+                      </Button>
+                    </div>
                   </Link>
                   <Link href="/checkout">
-                    <Button
-                      onClick={() => setIsOpen(false)}
-                      className="w-full bg-success text-white hover:bg-opacity-90"
-                    >
-                      Checkout
-                    </Button>
+                    <div className="w-full">
+                      <Button
+                        onClick={() => setIsOpen(false)}
+                        className="w-full bg-primary text-white hover:bg-primary/90 transition-all py-6 rounded-xl font-medium text-base"
+                      >
+                        Checkout <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
                   </Link>
                 </div>
               </div>
