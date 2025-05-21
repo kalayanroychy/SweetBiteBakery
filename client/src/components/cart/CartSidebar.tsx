@@ -95,27 +95,24 @@ const CartSidebar = ({ isOpen, setIsOpen }: CartSidebarProps) => {
                 <p className="text-sm text-gray-500 mb-5 italic">Taxes calculated at checkout</p>
 
                 <div className="space-y-3">
-                  <Link href="/cart">
-                    <div className="w-full">
-                      <Button
-                        onClick={() => setIsOpen(false)}
-                        variant="outline"
-                        className="w-full border-primary text-primary hover:bg-primary/5 transition-all py-6 rounded-xl font-medium text-base"
-                      >
-                        View Cart
-                      </Button>
-                    </div>
-                  </Link>
-                  <Link href="/checkout">
-                    <div className="w-full">
-                      <Button
-                        onClick={() => setIsOpen(false)}
-                        className="w-full bg-primary text-white hover:bg-primary/90 transition-all py-6 rounded-xl font-medium text-base"
-                      >
-                        Checkout <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </Link>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full border-primary text-primary hover:bg-primary/5 transition-all py-6 rounded-xl font-medium text-base"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Link href="/cart">View Cart</Link>
+                  </Button>
+                  
+                  <Button
+                    asChild
+                    className="w-full bg-primary text-white hover:bg-primary/90 transition-all py-6 rounded-xl font-medium text-base"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Link href="/checkout">
+                      Checkout <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
                 </div>
               </div>
             </>
