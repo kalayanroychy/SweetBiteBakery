@@ -1,5 +1,5 @@
 import { Link } from 'wouter';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Plus, Star } from 'lucide-react';
 import { ProductWithCategory } from '@shared/schema';
 import { useCart } from '@/hooks/use-cart';
 import { formatCurrency, truncateText } from '@/lib/utils';
@@ -19,43 +19,100 @@ const ProductCard = ({ product, featured = false }: ProductCardProps) => {
   };
 
   let badge = null;
+  let badgeColor = "";
+  
   if (product.isBestseller) {
     badge = "Bestseller";
+    badgeColor = "bg-amber-100 text-amber-700";
   } else if (product.isPopular) {
     badge = "Popular";
+    badgeColor = "bg-purple-100 text-purple-700";
   } else if (product.isNew) {
     badge = "New";
+    badgeColor = "bg-accent/25 text-primary";
   }
 
   return (
     <Link href={`/products/${product.slug}`}>
-      <a className={`bg-white rounded-lg shadow-lg overflow-hidden ${featured ? 'hover-card' : 'transition-transform duration-300 hover:-translate-y-2'}`}>
-        <img 
-          src={product.image} 
-          alt={product.name} 
-          className={`w-full ${featured ? 'h-60' : 'h-48'} object-cover`}
-        />
-        <div className="p-6">
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-heading text-xl font-bold text-primary">{product.name}</h3>
-            {badge && (
-              <span className="bg-accent text-primary text-sm font-semibold py-1 px-3 rounded-full">{badge}</span>
-            )}
+      <div className={`bg-white rounded-2xl border border-[#e3d9c8] overflow-hidden group ${
+        featured 
+          ? 'shadow-md hover:shadow-xl transition-all duration-500' 
+          : 'shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-2'
+      }`}>
+        {/* Image Container with overlay effect */}
+        <div className="relative overflow-hidden">
+          {/* Badge */}
+          {badge && (
+            <div className={`absolute top-4 left-4 z-10 ${badgeColor} py-1 px-3 rounded-full text-xs font-bold flex items-center`}>
+              {product.isBestseller && <Star className="mr-1" size={12} fill="currentColor" />}
+              {badge}
+            </div>
+          )}
+          
+          {/* Category Tag */}
+          <div className="absolute top-4 right-4 z-10 bg-white/80 backdrop-blur-sm py-1 px-3 rounded-full text-xs font-medium text-gray-700">
+            {product.category.name}
           </div>
-          <p className="text-text-dark text-sm mb-4">
-            {truncateText(product.description, featured ? 120 : 80)}
-          </p>
-          <div className="flex justify-between items-center">
-            <span className="text-primary text-xl font-bold">{formatCurrency(product.price)}</span>
-            <button 
-              className="bg-primary text-white py-2 px-4 rounded-md font-semibold hover:bg-opacity-90 transition flex items-center"
-              onClick={handleAddToCart}
-            >
-              <ShoppingCart className="mr-2" size={16} /> Add to Cart
-            </button>
+          
+          {/* Quick add button - visible on hover */}
+          <button 
+            className="absolute right-4 bottom-4 z-10 bg-primary text-white p-3 rounded-full shadow-lg transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300"
+            onClick={handleAddToCart}
+            aria-label="Add to cart"
+          >
+            <Plus size={20} />
+          </button>
+          
+          {/* Product Image */}
+          <div className="overflow-hidden">
+            <img 
+              src={product.image} 
+              alt={product.name} 
+              className={`w-full ${featured ? 'h-72' : 'h-56'} object-cover transform transition-transform duration-700 group-hover:scale-105`}
+            />
           </div>
+          
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </div>
-      </a>
+        
+        {/* Content */}
+        <div className="p-6">
+          {/* Product Title & Price */}
+          <div className="flex flex-col mb-3">
+            <h3 className="font-heading text-lg font-bold text-text-dark group-hover:text-primary transition-colors duration-300">{product.name}</h3>
+            <div className="mt-1 flex justify-between items-center">
+              <span className="text-primary font-bold">{formatCurrency(product.price)}</span>
+              
+              {/* Optional dietary tags */}
+              {product.dietaryOptions && (
+                <div className="flex space-x-1">
+                  {product.dietaryOptions.includes('vegan') && (
+                    <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded">Vegan</span>
+                  )}
+                  {product.dietaryOptions.includes('gluten-free') && (
+                    <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded">GF</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Description */}
+          <p className="text-gray-600 text-sm mb-5 leading-relaxed">
+            {truncateText(product.description, featured ? 120 : 75)}
+          </p>
+          
+          {/* Add to Cart Button */}
+          <button 
+            className="w-full bg-[#faf6f1] hover:bg-primary hover:text-white text-primary py-3 px-4 rounded-xl font-medium transition-colors duration-300 flex items-center justify-center"
+            onClick={handleAddToCart}
+          >
+            <ShoppingCart className="mr-2" size={18} /> 
+            Add to Cart
+          </button>
+        </div>
+      </div>
     </Link>
   );
 };
