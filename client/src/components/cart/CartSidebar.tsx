@@ -29,7 +29,7 @@ const CartSidebar = ({ isOpen, setIsOpen }: CartSidebarProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-[100] flex">
       {/* Backdrop with blur effect */}
       <div 
         className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
@@ -37,7 +37,7 @@ const CartSidebar = ({ isOpen, setIsOpen }: CartSidebarProps) => {
       />
       
       {/* Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl overflow-y-auto translate-x-0 transition-transform duration-300 ease-in-out border-l border-[#e3d9c8] z-50">
+      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl overflow-y-auto translate-x-0 transition-transform duration-300 ease-in-out border-l border-[#e3d9c8] z-[101]">
         {/* Header */}
         <div className="sticky top-0 bg-white px-7 py-6 flex justify-between items-center border-b border-[#e3d9c8]">
           <h2 className="font-heading text-2xl font-bold text-primary">Your Cart</h2>
