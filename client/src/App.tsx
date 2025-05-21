@@ -16,6 +16,9 @@ import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminProducts from "@/pages/AdminProducts";
 import AdminProductForm from "@/pages/AdminProductForm";
+import AdminOrders from "@/pages/AdminOrders";
+import AdminCustomers from "@/pages/AdminCustomers";
+import AdminSettings from "@/pages/AdminSettings";
 import Layout from "@/components/layout/Layout";
 import AdminLayout from "@/components/layout/AdminLayout";
 
@@ -36,6 +39,9 @@ function Router() {
       <Route path="/admin/products" component={AdminProducts} />
       <Route path="/admin/products/new" component={AdminProductForm} />
       <Route path="/admin/products/edit/:id" component={AdminProductForm} />
+      <Route path="/admin/orders" component={AdminOrders} />
+      <Route path="/admin/customers" component={AdminCustomers} />
+      <Route path="/admin/settings" component={AdminSettings} />
       
       {/* Fallback to 404 */}
       <Route component={NotFound} />

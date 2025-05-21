@@ -53,22 +53,26 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           <div className="flex-1 overflow-y-auto pt-2">
             <nav className="flex-1 px-4 pb-4 space-y-1">
               {navigation.map((item) => (
-                <Link
+                <div 
                   key={item.name}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
+                  className="w-full"
                 >
-                  <a className={`group flex items-center py-3 px-3 rounded-md text-sm ${
-                    location === item.href 
-                    ? 'bg-primary/10 text-primary font-medium' 
-                    : 'text-gray-700 hover:bg-gray-100'
-                  }`}>
-                    <item.icon className={`mr-3 h-5 w-5 ${
-                      location === item.href ? 'text-primary' : 'text-gray-500'
-                    }`} />
-                    {item.name}
-                  </a>
-                </Link>
+                  <Link
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <div className={`group flex items-center py-3 px-3 rounded-md text-sm ${
+                      location === item.href 
+                      ? 'bg-primary/10 text-primary font-medium' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                    }`}>
+                      <item.icon className={`mr-3 h-5 w-5 ${
+                        location === item.href ? 'text-primary' : 'text-gray-500'
+                      }`} />
+                      {item.name}
+                    </div>
+                  </Link>
+                </div>
               ))}
             </nav>
           </div>
@@ -94,21 +98,23 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             <div className="mt-6 flex-1 flex flex-col">
               <nav className="flex-1 px-4 space-y-1">
                 {navigation.map((item) => (
-                  <Link
+                  <div
                     key={item.name}
-                    href={item.href}
+                    className="w-full"
                   >
-                    <a className={`group flex items-center py-3 px-3 rounded-md text-sm ${
-                      location === item.href 
-                      ? 'bg-primary/10 text-primary font-medium' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                    }`}>
-                      <item.icon className={`mr-3 h-5 w-5 ${
-                        location === item.href ? 'text-primary' : 'text-gray-500'
-                      }`} />
-                      {item.name}
-                    </a>
-                  </Link>
+                    <Link href={item.href}>
+                      <div className={`group flex items-center py-3 px-3 rounded-md text-sm ${
+                        location === item.href 
+                        ? 'bg-primary/10 text-primary font-medium' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                      }`}>
+                        <item.icon className={`mr-3 h-5 w-5 ${
+                          location === item.href ? 'text-primary' : 'text-gray-500'
+                        }`} />
+                        {item.name}
+                      </div>
+                    </Link>
+                  </div>
                 ))}
               </nav>
             </div>
