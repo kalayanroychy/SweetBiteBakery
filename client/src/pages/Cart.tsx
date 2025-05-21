@@ -60,8 +60,8 @@ const Cart = () => {
                             className="w-20 h-20 object-cover rounded-md mr-4"
                           />
                           <div>
-                            <Link href={`/products/${item.productId}`}>
-                              <a className="font-semibold text-primary hover:underline">{item.name}</a>
+                            <Link href={`/products/${item.productId}`} className="font-semibold text-primary hover:underline">
+                              {item.name}
                             </Link>
                           </div>
                         </div>
