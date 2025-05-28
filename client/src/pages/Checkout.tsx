@@ -18,15 +18,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { CreditCard, BanknoteIcon, CheckCircle, CreditCard as CardIcon } from "lucide-react";
 
-// Extend order schema with validation rules
+// Extend order schema with validation rules for Bangladesh
 const checkoutFormSchema = insertOrderSchema.extend({
   customerName: z.string().min(2, "Name must be at least 2 characters"),
   customerEmail: z.string().email("Please enter a valid email address"),
-  customerPhone: z.string().min(10, "Please enter a valid phone number"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
+  customerPhone: z.string().min(11, "Please enter a valid Bangladeshi phone number (11 digits)"),
+  address: z.string().min(10, "Please enter your complete address"),
   city: z.string().min(2, "City must be at least 2 characters"),
-  state: z.string().min(2, "State must be at least 2 characters"),
-  zipCode: z.string().min(5, "ZIP code must be at least 5 characters"),
+  state: z.string().min(2, "Division/District must be at least 2 characters"),
+  zipCode: z.string().min(4, "Postal code must be at least 4 digits"),
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
@@ -47,12 +47,12 @@ const Checkout = () => {
     defaultValues: {
       customerName: "",
       customerEmail: "",
-      customerPhone: "",
+      customerPhone: "+880",
       address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      paymentMethod: "credit-card",
+      city: "Dhaka",
+      state: "Dhaka Division",
+      zipCode: "1000",
+      paymentMethod: "cash-on-delivery",
       total: cart.subtotal
     }
   });
@@ -159,7 +159,7 @@ const Checkout = () => {
                             <FormItem className="md:col-span-2">
                               <FormLabel>Phone Number</FormLabel>
                               <FormControl>
-                                <Input placeholder="(555) 123-4567" {...field} />
+                                <Input placeholder="+880 171 234 5678" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -180,9 +180,9 @@ const Checkout = () => {
                           name="address"
                           render={({ field }) => (
                             <FormItem className="md:col-span-2">
-                              <FormLabel>Address</FormLabel>
+                              <FormLabel>Complete Address</FormLabel>
                               <FormControl>
-                                <Input placeholder="123 Main Street" {...field} />
+                                <Input placeholder="House/Road/Area, e.g., House 12, Road 5, Dhanmondi" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -195,7 +195,7 @@ const Checkout = () => {
                             <FormItem>
                               <FormLabel>City</FormLabel>
                               <FormControl>
-                                <Input placeholder="New York" {...field} />
+                                <Input placeholder="Dhaka" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -207,9 +207,9 @@ const Checkout = () => {
                             name="state"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>State</FormLabel>
+                                <FormLabel>Division/District</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="NY" {...field} />
+                                  <Input placeholder="Dhaka Division" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -220,9 +220,9 @@ const Checkout = () => {
                             name="zipCode"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>ZIP Code</FormLabel>
+                                <FormLabel>Postal Code</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="10001" {...field} />
+                                  <Input placeholder="1000" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
