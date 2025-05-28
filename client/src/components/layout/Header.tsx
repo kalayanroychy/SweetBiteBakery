@@ -279,24 +279,6 @@ const Header = () => {
 
       {/* Cart Sidebar */}
       <CartSidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-
-      {/* Floating Cart Button (visible on all pages on large screens) */}
-      <div className="fixed bottom-6 right-6 z-40 lg:block md:hidden hidden">
-        <Button
-          onClick={() => setIsOpen(true)}
-          className="h-14 w-14 rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 transition-all flex items-center justify-center"
-          aria-label="Open cart"
-        >
-          <div className="relative">
-            <ShoppingBag className="h-6 w-6" />
-            {totalItems > 0 && (
-              <span className="absolute -top-2 -right-2 bg-white text-primary text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {totalItems}
-              </span>
-            )}
-          </div>
-        </Button>
-      </div>
     </>
   );
 };
