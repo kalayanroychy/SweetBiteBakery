@@ -26,11 +26,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { id: '', items: [], subtotal: 0 };
     }
     
-    // Clear old cart data to fix price calculation issues
-    localStorage.removeItem(CART_STORAGE_KEY);
-    
     return { id: createCartId(), items: [], subtotal: 0 };
   });
+
+  // Clear old cart data on mount to fix price calculation issues
+  useEffect(() => {
+    localStorage.removeItem(CART_STORAGE_KEY);
+  }, []);
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
@@ -77,21 +79,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ];
       }
       
-      toast({
-        title: "Added to cart",
-        description: `${product.name} has been added to your cart`,
-      });
-      
-      if (!isOpen) {
-        setTimeout(() => setIsOpen(true), 300);
-      }
-      
       return {
         ...prevCart,
         items: updatedItems,
         subtotal: calculateSubtotal(updatedItems)
       };
     });
+
+    // Show toast and open cart sidebar after state update
+    toast({
+      title: "Added to cart",
+      description: `${product.name} has been added to your cart`,
+    });
+    
+    if (!isOpen) {
+      setTimeout(() => setIsOpen(true), 300);
+    }
   };
 
   // Remove item from cart

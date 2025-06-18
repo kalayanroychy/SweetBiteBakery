@@ -8,6 +8,11 @@ SweetBite Bakery is a full-stack e-commerce application for a bakery business. T
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+- **Cart Calculation Fix (June 18, 2025)**: Resolved cart calculation errors by updating product prices from USD to proper BDT amounts in database and clearing corrupted localStorage cache data
+- **React Warning Fix (June 18, 2025)**: Fixed React setState warning in CartProvider by moving localStorage operations to useEffect hook instead of during component initialization
+
 ## System Architecture
 
 The application follows a client-server architecture with the following key components:
