@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   insertProductSchema, 
+  insertCategorySchema,
   type InsertProduct, 
   type ProductWithCategory, 
   type Category
@@ -27,9 +28,10 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   ArrowLeft, Loader2, Save, 
-  AlertTriangle, AlertCircle 
+  AlertTriangle, AlertCircle, Plus, Upload, Image as ImageIcon
 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 
@@ -64,6 +66,10 @@ const AdminProductForm = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
   const isEditMode = !!id;
 
   // Check for admin authentication
@@ -154,10 +160,62 @@ const AdminProductForm = () => {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  // Handle image file selection
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+        form.setValue("image", reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Create new category
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    
+    setIsCreatingCategory(true);
+    try {
+      const newCategory = await apiRequest("POST", "/api/admin/categories", {
+        name: newCategoryName,
+        slug: slugify(newCategoryName)
+      });
+      
+      // Refresh categories
+      queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
+      
+      // Set the new category as selected
+      form.setValue("categoryId", newCategory.id);
+      setNewCategoryName("");
+      
+      toast({
+        title: "Category created",
+        description: "New category has been successfully created",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create category. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
+
   const onSubmit = async (data: ProductFormValues) => {
     // Ensure slug is generated if not provided
     if (!data.slug && data.name) {
       data.slug = slugify(data.name);
+    }
+
+    // Set default "No Image" if no image provided
+    if (!data.image || data.image.trim() === "") {
+      data.image = "/api/placeholder/300/300?text=No+Image";
     }
 
     setIsSubmitting(true);
@@ -318,31 +376,70 @@ const AdminProductForm = () => {
                     )}
                   />
 
-                  {/* Category */}
+                  {/* Category with instant creation */}
                   <FormField
                     control={form.control}
                     name="categoryId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <Select 
-                          disabled={categoriesLoading}
-                          onValueChange={(value) => field.onChange(parseInt(value))}
-                          value={field.value?.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {categories?.map((category) => (
-                              <SelectItem key={category.id} value={category.id.toString()}>
-                                {category.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex gap-2">
+                          <Select 
+                            disabled={categoriesLoading}
+                            onValueChange={(value) => field.onChange(parseInt(value))}
+                            value={field.value?.toString()}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="flex-1">
+                                <SelectValue placeholder="Select a category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {categories?.map((category) => (
+                                <SelectItem key={category.id} value={category.id.toString()}>
+                                  {category.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button type="button" variant="outline" size="icon">
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Create New Category</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <Input
+                                  placeholder="Category name"
+                                  value={newCategoryName}
+                                  onChange={(e) => setNewCategoryName(e.target.value)}
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setNewCategoryName("")}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    onClick={handleCreateCategory}
+                                    disabled={isCreatingCategory || !newCategoryName.trim()}
+                                  >
+                                    {isCreatingCategory && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Create
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
