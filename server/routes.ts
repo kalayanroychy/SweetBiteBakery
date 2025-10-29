@@ -8,6 +8,7 @@ import {
   insertOrderSchema,
   insertOrderItemSchema,
   loginSchema,
+  registerSchema,
   newsletterSchema,
   contactFormSchema
 } from "@shared/schema";
@@ -178,6 +179,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.session.destroy(() => {
       res.json({ success: true });
     });
+  });
+
+  // User authentication routes
+  app.post("/api/auth/register", async (req: Request, res: Response) => {
+    try {
+      const userData = registerSchema.parse(req.body);
+      
+      // Check if username or email already exists
+      const existingUser = await storage.getUserByUsernameOrEmail(userData.username, userData.email);
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: existingUser.username === userData.username 
+            ? "Username already exists" 
+            : "Email already registered" 
+        });
+      }
+      
+      // Create new user
+      const newUser = await storage.createUser({
+        username: userData.username,
+        email: userData.email,
+        password: userData.password,
+        name: userData.name,
+        isAdmin: false
+      });
+      
+      // Automatically log in the user after registration
+      req.session.userId = newUser.id;
+      req.session.isAdmin = false;
+      
+      res.json({ 
+        success: true, 
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          name: newUser.name
+        }
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: "Invalid input", errors: error.errors });
+      } else {
+        console.error("Registration error:", error);
+        res.status(500).json({ message: "Registration failed" });
+      }
+    }
+  });
+
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const credentials = loginSchema.parse(req.body);
+      const result = await authenticateUser(credentials);
+      
+      if (result.success) {
+        req.session.userId = result.userId;
+        req.session.isAdmin = result.isAdmin;
+        
+        // Get user details to return
+        const user = await storage.getUserById(result.userId!);
+        
+        res.json({ 
+          success: true, 
+          isAdmin: result.isAdmin,
+          user: user ? {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            name: user.name
+          } : null
+        });
+      } else {
+        res.status(401).json({ message: "Invalid credentials" });
+      }
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: "Invalid input", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Login failed" });
+      }
+    }
+  });
+
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    req.session.destroy(() => {
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/me", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const user = await storage.getUserById(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        isAdmin: user.isAdmin
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
   });
 
   // Protected admin routes

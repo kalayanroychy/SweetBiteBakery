@@ -63,14 +63,18 @@ export type Product = typeof products.$inferSelect;
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
   password: text("password").notNull(),
+  name: text("name"),
   isAdmin: boolean("is_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
+  email: true,
   password: true,
+  name: true,
   isAdmin: true,
 });
 
@@ -80,6 +84,7 @@ export type User = typeof users.$inferSelect;
 // Order schema
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id"), // Optional: link to user if logged in
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email").notNull(),
   customerPhone: text("customer_phone").notNull(),
@@ -94,6 +99,7 @@ export const orders = pgTable("orders", {
 });
 
 export const insertOrderSchema = createInsertSchema(orders).pick({
+  userId: true,
   customerName: true,
   customerEmail: true,
   customerPhone: true,
@@ -154,6 +160,16 @@ export const loginSchema = z.object({
 });
 
 export type LoginCredentials = z.infer<typeof loginSchema>;
+
+// User registration schema
+export const registerSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+});
+
+export type RegisterCredentials = z.infer<typeof registerSchema>;
 
 // Newsletter subscription
 export const newsletterSchema = z.object({

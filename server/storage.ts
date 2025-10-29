@@ -28,7 +28,9 @@ export interface IStorage {
 
   // User operations
   getUser(id: number): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByUsernameOrEmail(username: string, email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
   // Order operations
@@ -134,11 +136,11 @@ export class MemStorage implements IStorage {
   async createProduct(product: InsertProduct): Promise<Product> {
     const id = this.productId++;
     const now = new Date();
-    const newProduct: Product = { 
+    const newProduct = { 
       ...product, 
       id, 
       createdAt: now
-    };
+    } as Product;
     this.products.set(id, newProduct);
     return newProduct;
   }
@@ -161,16 +163,26 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
   async getUserByUsername(username: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
       user => user.username === username
     );
   }
 
+  async getUserByUsernameOrEmail(username: string, email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      user => user.username === username || user.email === email
+    );
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userId++;
     const now = new Date();
-    const user: User = { ...insertUser, id, createdAt: now };
+    const user = { ...insertUser, id, createdAt: now } as User;
     this.users.set(id, user);
     return user;
   }
@@ -187,7 +199,7 @@ export class MemStorage implements IStorage {
   async createOrder(order: InsertOrder): Promise<Order> {
     const id = this.orderId++;
     const now = new Date();
-    const newOrder: Order = { ...order, id, createdAt: now };
+    const newOrder = { ...order, id, status: 'pending', createdAt: now } as Order;
     this.orders.set(id, newOrder);
     return newOrder;
   }
