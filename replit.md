@@ -10,8 +10,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- **Product Variant System with Dynamic Pricing (October 29, 2025)**: Implemented comprehensive product variant system with multiple images and price variations. Key features:
+  - **Chip-based Size/Color Input**: Replaced comma-separated input with add/remove chip system in admin form for better UX
+  - **Multiple Image Upload**: Added support for primary image + additional images with gallery preview and navigation
+  - **Price Variation Matrix**: Created dynamic pricing table allowing different prices for each size-color combination, stored as JSONB in database
+  - **Image Gallery**: Product details page displays image carousel with thumbnails, navigation arrows, and smooth transitions
+  - **Dynamic Pricing Display**: Price updates in real-time based on selected size and color combination
+  - **Cart Variant Support**: Cart now properly stores and displays product variants (size, color, specific price). Same product with different variants creates separate cart items with correct pricing
+  - All features tested end-to-end with successful validation
 - **Bakery-Themed Product Details Page (October 29, 2025)**: Completely redesigned ProductDetails page with warm, artisanal bakery aesthetic. Features include warm color palette (honey, cream, cinnamon, chocolate, blush, pistachio), artisan badge with rotation animation, chef's seal, storytelling card with product description, quality badges (Baked Fresh Daily, Quality Guaranteed, Fast Delivery), bakery-themed size/color selection, gradient action tray, and bakery-themed toast notifications. Layout includes hero section with decorative product frame, sensory storytelling block, and responsive grid design.
-- **Product Size and Color Fields (October 29, 2025)**: Added size and color fields to products schema and admin form. Products can now have multiple sizes and colors entered as comma-separated values. Data is stored as text arrays in the database and properly validated during creation and editing.
 - **New Pages Added (October 29, 2025)**: Created dedicated About Us and Contact pages with full navigation integration. About Us page includes company story, mission, values, and history. Contact page features contact form with validation, contact information, business hours, and FAQ section.
 - **Currency Display Fix (October 29, 2025)**: Updated formatCurrency function to use English digits (0-9) instead of Bangla digits for all price displays. Changed locale from 'bn-BD' to 'en-US' while maintaining BDT currency format
 - **Cart Calculation Fix (June 18, 2025)**: Resolved cart calculation errors by updating product prices from USD to proper BDT amounts in database and clearing corrupted localStorage cache data
@@ -107,10 +114,14 @@ In production:
    - Product details are loaded on demand
 
 2. **Cart Management Flow**:
-   - User adds products to cart
+   - User selects product variants (size, color) on product details page
+   - Dynamic pricing updates based on selected variant combination
+   - User adds product with selected variant to cart
+   - Cart stores productId + size + color combination (separate cart items for different variants)
    - Cart state is managed in the browser and persisted in localStorage
+   - Cart displays variant-specific information and prices
    - User can adjust quantities or remove items
-   - Cart totals are calculated on the client
+   - Cart totals are calculated on the client using variant-specific prices
 
 3. **Checkout Flow**:
    - User fills out shipping and payment information
@@ -176,7 +187,7 @@ The application is configured for deployment on Replit with the following featur
    - Fields: id, name, slug
 
 2. **Products**: Bakery items for sale
-   - Fields: id, name, slug, description, price, image, categoryId, featured, dietary options
+   - Fields: id, name, slug, description, price, image, categoryId, featured, dietary options, sizes (array), colors (array), images (array), priceVariations (JSONB for size-color-price mappings)
 
 3. **Users**: Admin users for the system
    - Fields: id, username, password, isAdmin
