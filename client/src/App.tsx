@@ -21,6 +21,9 @@ import AdminProductForm from "@/pages/AdminProductForm";
 import AdminOrders from "@/pages/AdminOrders";
 import AdminCustomers from "@/pages/AdminCustomers";
 import AdminSettings from "@/pages/AdminSettings";
+import Register from "@/pages/Register";
+import Login from "@/pages/Login";
+import UserPanel from "@/pages/UserPanel";
 import Layout from "@/components/layout/Layout";
 import AdminLayout from "@/components/layout/AdminLayout";
 
@@ -36,6 +39,11 @@ function Router() {
       <Route path="/order-confirmation" component={OrderConfirmation} />
       <Route path="/about" component={AboutUs} />
       <Route path="/contact" component={Contact} />
+      
+      {/* User Authentication Routes */}
+      <Route path="/register" component={Register} />
+      <Route path="/login" component={Login} />
+      <Route path="/user-panel" component={UserPanel} />
       
       {/* Admin Routes */}
       <Route path="/admin/login" component={AdminLogin} />

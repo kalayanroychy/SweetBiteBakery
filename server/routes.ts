@@ -362,13 +362,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's orders (for logged-in users)
+  app.get("/api/orders/user", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const allOrders = await storage.getOrders();
+      // Filter orders for the current user
+      const userOrders = allOrders.filter(order => order.userId === req.session.userId);
+      res.json(userOrders);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
   // Orders
   app.post("/api/orders", async (req: Request, res: Response) => {
     try {
       const orderData = insertOrderSchema.parse(req.body);
       
+      // Add userId if user is logged in
+      const orderWithUser = {
+        ...orderData,
+        userId: req.session.userId || null
+      };
+      
       // Create the order
-      const order = await storage.createOrder(orderData);
+      const order = await storage.createOrder(orderWithUser);
       
       // Create order items
       const items = req.body.items || [];
