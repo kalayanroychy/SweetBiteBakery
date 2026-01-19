@@ -59,8 +59,8 @@ const AdminLogin = () => {
   return (
     <div className="min-h-screen bg-secondary flex items-center justify-center p-4">
       <Helmet>
-        <title>Admin Login | SweetBite Bakery</title>
-        <meta name="description" content="Login to the SweetBite Bakery admin dashboard." />
+        <title>Admin Login | Probashi Bakery</title>
+        <meta name="description" content="Login to the Probashi Bakery admin dashboard." />
         <meta name="robots" content="noindex" />
       </Helmet>
 

@@ -82,22 +82,29 @@ const AdminProducts = () => {
 
   // Fetch products
   const {
-    data: products,
+    data: productsData,
     isLoading,
     error,
-  } = useQuery<ProductWithCategory[]>({
+  } = useQuery({
     queryKey: ["/api/products"],
+    queryFn: async () => {
+      const response = await fetch("/api/products");
+      return response.json();
+    },
     // If this fails due to auth, we'll redirect in the effect above
     retry: false,
   });
 
+  // Extract products array from paginated response
+  const products = productsData?.products || productsData || [];
+
   // Filter products based on search term
-  const filteredProducts = products
+  const filteredProducts = Array.isArray(products)
     ? products.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.description.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
+      (product: any) =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
     : [];
 
   // Calculate pagination
@@ -151,7 +158,7 @@ const AdminProducts = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Manage Products | SweetBite Admin</title>
+        <title>Manage Products | Probashi Admin</title>
         <meta name="robots" content="noindex" />
       </Helmet>
 

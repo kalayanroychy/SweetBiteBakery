@@ -39,10 +39,10 @@ const Contact = () => {
   return (
     <Layout>
       <Helmet>
-        <title>Contact Us | SweetBite Bakery</title>
-        <meta name="description" content="Get in touch with SweetBite Bakery. Visit us at our location, call us, or send us a message. We'd love to hear from you!" />
-        <meta property="og:title" content="Contact Us | SweetBite Bakery" />
-        <meta property="og:description" content="Get in touch with SweetBite Bakery. We'd love to hear from you!" />
+        <title>Contact Us | Probashi Bakery</title>
+        <meta name="description" content="Get in touch with Probashi Bakery. Visit us at our location, call us, or send us a message. We'd love to hear from you!" />
+        <meta property="og:title" content="Contact Us | Probashi Bakery" />
+        <meta property="og:description" content="Get in touch with Probashi Bakery. We'd love to hear from you!" />
       </Helmet>
 
       {/* Hero Section */}
@@ -101,7 +101,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-primary mb-2">Email Us</h3>
-                    <p className="text-gray-700">hello@sweetbite.com</p>
+                    <p className="text-gray-700">hello@Probashi.com</p>
                     <p className="text-sm text-gray-500 mt-1">We'll respond within 24 hours</p>
                   </div>
                 </div>

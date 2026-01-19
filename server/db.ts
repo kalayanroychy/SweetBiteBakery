@@ -5,30 +5,43 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+// Make DATABASE_URL optional for local development
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.warn(
+    "⚠️  DATABASE_URL not set. Running with in-memory storage. Data will not persist between restarts.",
   );
 }
 
+
 // Create connection pool with better retry and timeout settings
-export const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL,
-  max: 20, // maximum number of clients
-  idleTimeoutMillis: 30000, // how long to keep idle connections
-  connectionTimeoutMillis: 10000, // connection timeout
-});
+export const pool = DATABASE_URL ? new Pool({
+  connectionString: DATABASE_URL,
+  max: 10, // Reduce max connections to avoid exhausting serverless limits
+  idleTimeoutMillis: 60000, // Keep idle connections alive longer (1 min)
+  connectionTimeoutMillis: 30000, // Increased timeout to allow for cold starts (30s)
+}) : null;
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
 
-// Initialize drizzle with our pool and schema
-export const db = drizzle({ client: pool, schema });
+if (pool) {
+  pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
+    // Don't exit the process here, let the pool handle reconnection
+    // process.exit(-1);
+  });
+}
+
+// Initialize drizzle with our pool and schema (only if pool exists)
+export const db = pool ? drizzle({ client: pool, schema }) : null;
 
 // Helper function to check database connection
 export const checkDatabaseConnection = async (): Promise<boolean> => {
+  if (!pool) {
+    console.log('No database connection available (DATABASE_URL not set)');
+    return false;
+  }
+
   let client;
   try {
     client = await pool.connect();

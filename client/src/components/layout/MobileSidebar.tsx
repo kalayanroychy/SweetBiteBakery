@@ -41,7 +41,7 @@ const MobileSidebar = ({ isOpen, setIsOpen }: MobileSidebarProps) => {
       <div className="fixed right-0 top-0 h-full w-[280px] max-w-[85vw] bg-gradient-to-b from-[#faf6f1] to-white shadow-xl overflow-y-auto translate-x-0 transition-transform duration-300 ease-in-out border-l border-[#e3d9c8]">
         {/* Header */}
         <div className="p-6 flex justify-between items-center border-b border-[#e3d9c8]">
-          <h2 className="font-heading text-xl font-bold text-primary">SweetBite</h2>
+          <h2 className="font-heading text-xl font-bold text-primary">Probashi Bakery</h2>
           <button 
             className="rounded-full p-2 text-primary hover:bg-neutral transition-colors" 
             onClick={() => setIsOpen(false)}
@@ -106,7 +106,7 @@ const MobileSidebar = ({ isOpen, setIsOpen }: MobileSidebarProps) => {
             </div>
           </Link>
           <div className="mt-4 text-center text-xs text-gray-500">
-            <p>© 2025 SweetBite Bakery</p>
+            <p>© 2025 Probashi Bakery Bakery</p>
             <p className="mt-1">Hand-crafted with love</p>
           </div>
         </div>

@@ -155,7 +155,7 @@ const ContactSection = () => {
               
               <img 
                 src="https://pixabay.com/get/gc783161329cbc70b4a5d934cce54b9c3fded1c68f82c4cf64c069b3b263e034b4357903d4bdc19ba4a36bfcd007aef90cb1ef0cdc83abc63e7cb5dce5738a67a_1280.jpg" 
-                alt="SweetBite Bakery Storefront" 
+                alt="Probashi Bakery Storefront" 
                 className="w-full h-60 object-cover rounded-lg mb-6"
               />
               
@@ -190,7 +190,7 @@ const ContactSection = () => {
                   <Mail className="text-primary mt-1 mr-4" />
                   <div>
                     <h4 className="font-bold">Email</h4>
-                    <p className="text-text-dark">hello@sweetbite.com</p>
+                    <p className="text-text-dark">hello@Probashi.com</p>
                   </div>
                 </div>
               </div>

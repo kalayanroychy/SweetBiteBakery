@@ -10,16 +10,19 @@ type ProductGridProps = {
   products: ProductWithCategory[];
   isLoading: boolean;
   error: unknown;
+  fetchNextPage?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 };
 
-const ProductGrid = ({ products, isLoading, error }: ProductGridProps) => {
+const ProductGrid = ({ products, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage }: ProductGridProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState('featured');
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 6;
 
   // Filter and sort products
-  const filteredProducts = products ? products.filter(product => 
+  const filteredProducts = products ? products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.description.toLowerCase().includes(searchTerm.toLowerCase())
   ) : [];
@@ -90,7 +93,7 @@ const ProductGrid = ({ products, isLoading, error }: ProductGridProps) => {
           </Select>
         </div>
       </div>
-      
+
       {/* Product Grid */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -123,34 +126,33 @@ const ProductGrid = ({ products, isLoading, error }: ProductGridProps) => {
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
-          
+
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex justify-center mt-12">
               <nav className="inline-flex rounded-md shadow-sm">
-                <button 
+                <button
                   onClick={() => paginate(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   className="py-2 px-4 border border-gray-300 bg-white text-text-dark rounded-l-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft size={16} />
                 </button>
-                
+
                 {[...Array(totalPages)].map((_, index) => (
                   <button
                     key={index}
                     onClick={() => paginate(index + 1)}
-                    className={`py-2 px-4 border-t border-b border-gray-300 ${
-                      currentPage === index + 1
-                        ? 'bg-primary text-white'
-                        : 'bg-white text-text-dark hover:bg-gray-100'
-                    }`}
+                    className={`py-2 px-4 border-t border-b border-gray-300 ${currentPage === index + 1
+                      ? 'bg-primary text-white'
+                      : 'bg-white text-text-dark hover:bg-gray-100'
+                      }`}
                   >
                     {index + 1}
                   </button>
                 ))}
-                
-                <button 
+
+                <button
                   onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                   className="py-2 px-4 border border-gray-300 bg-white text-text-dark rounded-r-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -158,6 +160,19 @@ const ProductGrid = ({ products, isLoading, error }: ProductGridProps) => {
                   <ChevronRight size={16} />
                 </button>
               </nav>
+            </div>
+          )}
+
+          {/* Load More Button */}
+          {hasNextPage && !isLoading && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => fetchNextPage?.()}
+                disabled={isFetchingNextPage}
+                className="px-8 py-3 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isFetchingNextPage ? 'Loading...' : 'Load More Products'}
+              </button>
             </div>
           )}
         </>

@@ -81,8 +81,8 @@ export default function AdminSettings() {
   const storeForm = useForm<StoreSettingsValues>({
     resolver: zodResolver(storeSettingsSchema),
     defaultValues: {
-      storeName: 'SweetBite Bakery',
-      storeEmail: 'contact@sweetbite.com',
+      storeName: 'Probashi Bakery',
+      storeEmail: 'contact@Probashi.com',
       storePhone: '+880 123 456 7890',
       storeAddress: '123 Bakery Lane, Gulshan, Dhaka, Bangladesh',
       storeCurrency: 'BDT',
@@ -99,7 +99,7 @@ export default function AdminSettings() {
       enableNagad: false,
       bkashNumber: '+880 171 234 5678',
       nagadNumber: '',
-      checkoutNotes: 'Thank you for shopping with SweetBite Bakery! Your order will be processed within 24 hours.',
+      checkoutNotes: 'Thank you for shopping with Probashi Bakery! Your order will be processed within 24 hours.',
     },
   });
 
@@ -591,7 +591,7 @@ export default function AdminSettings() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" placeholder="john@example.com" defaultValue="admin@sweetbite.com" />
+                    <Input id="email" type="email" placeholder="john@example.com" defaultValue="admin@Probashi.com" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="username">Username</Label>

@@ -1,5 +1,6 @@
 import { IStorage } from "./storage";
 import { hashPassword } from "./auth";
+import { InsertProduct } from "@shared/schema";
 
 /**
  * Loads initial data into the database if it's empty
@@ -19,12 +20,14 @@ export async function loadInitialData(storage: IStorage): Promise<void> {
     const hashedPassword = await hashPassword("admin123");
     const adminUser = {
       username: "admin",
+      email: "admin@sweetbite.com",
       password: hashedPassword,
+      name: "Admin User",
       isAdmin: true
     };
     await storage.createUser(adminUser);
     console.log("Admin user created");
-    
+
     // Create categories
     const categoryData = [
       { name: "Cakes", slug: "cakes" },
@@ -32,14 +35,14 @@ export async function loadInitialData(storage: IStorage): Promise<void> {
       { name: "Cookies", slug: "cookies" },
       { name: "Breads", slug: "breads" }
     ];
-    
+
     const categories = [];
     for (const category of categoryData) {
       const newCategory = await storage.createCategory(category);
       categories.push(newCategory);
       console.log(`Category created: ${category.name}`);
     }
-    
+
     // Create products - one at a time with better error handling
     const createProduct = async (product: InsertProduct) => {
       try {
@@ -57,7 +60,7 @@ export async function loadInitialData(storage: IStorage): Promise<void> {
           isPopular: product.isPopular || false,
           dietaryOptions: product.dietaryOptions || []
         };
-        
+
         const newProduct = await storage.createProduct(insertProduct);
         console.log(`Product created: ${product.name}`);
         return newProduct;
@@ -66,7 +69,7 @@ export async function loadInitialData(storage: IStorage): Promise<void> {
         return null;
       }
     };
-    
+
     const productsData = [
       {
         name: "Strawberry Dream Cake",
@@ -134,14 +137,14 @@ export async function loadInitialData(storage: IStorage): Promise<void> {
         dietaryOptions: ["vegetarian"]
       }
     ];
-    
+
     // Add just a few products for now to avoid overwhelming the database
     for (const product of productsData) {
       await createProduct(product);
       // Add a small delay to avoid overwhelming the connection
       await new Promise(resolve => setTimeout(resolve, 500));
     }
-    
+
     console.log("Initial data loaded successfully!");
   } catch (error) {
     console.error("Error loading initial data:", error);

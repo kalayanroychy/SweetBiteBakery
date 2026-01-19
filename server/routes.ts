@@ -20,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   try {
     const { checkDatabaseConnection } = await import("./db");
     const isConnected = await checkDatabaseConnection();
-    
+
     if (isConnected) {
       // Initialize data if storage is empty
       await loadInitialData(storage);
@@ -30,9 +30,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   } catch (error) {
     console.error("Error checking database connection:", error);
   }
-  
+
   // API Routes
-  
+
   // Categories
   app.get("/api/categories", async (_req: Request, res: Response) => {
     try {
@@ -56,21 +56,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Products
-  app.get("/api/products", async (_req: Request, res: Response) => {
+  app.get("/api/products", async (req: Request, res: Response) => {
     try {
-      const products = await storage.getProducts();
+      // Parse pagination parameters
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : undefined;
+
+      const products = await storage.getProducts(limit, offset);
       const categories = await storage.getCategories();
-      
+      const total = await storage.getProductsCount();
+
+      // Create a map of categories for O(1) lookup
+      const categoryMap = new Map(categories.map(c => [c.id, c]));
+
       // Add category information to each product
       const productsWithCategory = products.map(product => {
-        const category = categories.find(c => c.id === product.categoryId);
+        const category = categoryMap.get(product.categoryId);
         return {
           ...product,
           category: category || { id: 0, name: "Unknown", slug: "unknown" }
         };
       });
-      
-      res.json(productsWithCategory);
+
+      res.json({
+        products: productsWithCategory,
+        total,
+        limit,
+        offset
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch products" });
     }
@@ -80,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const products = await storage.getFeaturedProducts();
       const categories = await storage.getCategories();
-      
+
       // Add category information to each product
       const productsWithCategory = products.map(product => {
         const category = categories.find(c => c.id === product.categoryId);
@@ -89,7 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           category: category || { id: 0, name: "Unknown", slug: "unknown" }
         };
       });
-      
+
       res.json(productsWithCategory);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch featured products" });
@@ -102,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(categoryId)) {
         return res.status(400).json({ message: "Invalid category ID" });
       }
-      
+
       const products = await storage.getProductsByCategory(categoryId);
       res.json(products);
     } catch (error) {
@@ -117,18 +130,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid product ID" });
       }
-      
+
       const product = await storage.getProductById(id);
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-      
+
       const category = await storage.getCategoryById(product.categoryId);
       const productWithCategory = {
         ...product,
         category: category || { id: 0, name: "Unknown", slug: "unknown" }
       };
-      
+
       res.json(productWithCategory);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch product" });
@@ -141,9 +154,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-      
+
       const category = await storage.getCategoryById(product.categoryId);
-      
+
       res.json({
         ...product,
         category: category || { id: 0, name: "Unknown", slug: "unknown" }
@@ -158,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const credentials = loginSchema.parse(req.body);
       const result = await authenticateUser(credentials);
-      
+
       if (result.success) {
         req.session.userId = result.userId;
         req.session.isAdmin = result.isAdmin;
@@ -185,17 +198,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const userData = registerSchema.parse(req.body);
-      
+
       // Check if username or email already exists
       const existingUser = await storage.getUserByUsernameOrEmail(userData.username, userData.email);
       if (existingUser) {
-        return res.status(400).json({ 
-          message: existingUser.username === userData.username 
-            ? "Username already exists" 
-            : "Email already registered" 
+        return res.status(400).json({
+          message: existingUser.username === userData.username
+            ? "Username already exists"
+            : "Email already registered"
         });
       }
-      
+
       // Create new user
       const newUser = await storage.createUser({
         username: userData.username,
@@ -204,13 +217,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: userData.name,
         isAdmin: false
       });
-      
+
       // Automatically log in the user after registration
       req.session.userId = newUser.id;
       req.session.isAdmin = false;
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         user: {
           id: newUser.id,
           username: newUser.username,
@@ -232,16 +245,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const credentials = loginSchema.parse(req.body);
       const result = await authenticateUser(credentials);
-      
+
       if (result.success) {
         req.session.userId = result.userId;
         req.session.isAdmin = result.isAdmin;
-        
+
         // Get user details to return
         const user = await storage.getUserById(result.userId!);
-        
-        res.json({ 
-          success: true, 
+
+        res.json({
+          success: true,
           isAdmin: result.isAdmin,
           user: user ? {
             id: user.id,
@@ -272,13 +285,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    
+
     try {
       const user = await storage.getUserById(req.session.userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       res.json({
         id: user.id,
         username: user.username,
@@ -312,14 +325,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid product ID" });
       }
-      
+
       const productData = insertProductSchema.partial().parse(req.body);
       const product = await storage.updateProduct(id, productData);
-      
+
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-      
+
       res.json(product);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -336,12 +349,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid product ID" });
       }
-      
+
       const success = await storage.deleteProduct(id);
       if (!success) {
         return res.status(404).json({ message: "Product not found" });
       }
-      
+
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete product" });
@@ -367,7 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    
+
     try {
       const allOrders = await storage.getOrders();
       // Filter orders for the current user
@@ -382,16 +395,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/orders", async (req: Request, res: Response) => {
     try {
       const orderData = insertOrderSchema.parse(req.body);
-      
+
       // Add userId if user is logged in
       const orderWithUser = {
         ...orderData,
         userId: req.session.userId || null
       };
-      
+
       // Create the order
       const order = await storage.createOrder(orderWithUser);
-      
+
       // Create order items
       const items = req.body.items || [];
       for (const item of items) {
@@ -404,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         await storage.createOrderItem(orderItemData);
       }
-      
+
       res.status(201).json({ order });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -421,14 +434,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid order ID" });
       }
-      
+
       const order = await storage.getOrderById(id);
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       const items = await storage.getOrderItems(id);
-      
+
       res.json({ order, items });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch order" });
@@ -440,9 +453,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const subscription = newsletterSchema.parse(req.body);
       // In a real app, we'd store this in a database
-      res.status(200).json({ 
-        success: true, 
-        message: `Thank you for subscribing with ${subscription.email}!` 
+      res.status(200).json({
+        success: true,
+        message: `Thank you for subscribing with ${subscription.email}!`
       });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -458,9 +471,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const contactForm = contactFormSchema.parse(req.body);
       // In a real app, we'd send an email or store this in a database
-      res.status(200).json({ 
-        success: true, 
-        message: `Thank you for your message, ${contactForm.name}! We'll get back to you soon.` 
+      res.status(200).json({
+        success: true,
+        message: `Thank you for your message, ${contactForm.name}! We'll get back to you soon.`
       });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -475,7 +488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/placeholder/:width/:height", (req: Request, res: Response) => {
     const { width, height } = req.params;
     const text = req.query.text || "No Image";
-    
+
     // Generate a simple SVG placeholder
     const svg = `
       <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
@@ -486,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </text>
       </svg>
     `;
-    
+
     res.setHeader('Content-Type', 'image/svg+xml');
     res.send(svg);
   });

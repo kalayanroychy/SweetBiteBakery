@@ -12,9 +12,9 @@ const Home = () => {
   return (
     <Layout>
       <Helmet>
-        <title>SweetBite Bakery - Delicious Treats Made With Love</title>
-        <meta name="description" content="Welcome to SweetBite Bakery! We create handcrafted pastries, cakes, and breads using only the finest ingredients and time-honored recipes." />
-        <meta property="og:title" content="SweetBite Bakery - Delicious Treats Made With Love" />
+        <title>Probashi Bakery - Delicious Treats Made With Love</title>
+        <meta name="description" content="Welcome to Probashi Bakery! We create handcrafted pastries, cakes, and breads using only the finest ingredients and time-honored recipes." />
+        <meta property="og:title" content="Probashi Bakery - Delicious Treats Made With Love" />
         <meta property="og:description" content="Discover our handcrafted pastries, cakes, and breads made with only the finest ingredients." />
         <meta property="og:type" content="website" />
       </Helmet>

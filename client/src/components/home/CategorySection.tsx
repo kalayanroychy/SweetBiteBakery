@@ -11,7 +11,7 @@ const CategorySection = () => {
     queryKey: ["/api/categories"],
   });
 
-  const categoryImages = {
+  const categoryImages: Record<string, string> = {
     cakes:
       "https://images.unsplash.com/photo-1535141192574-5d4897c12636?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=600&q=80",
     pastries:
@@ -20,6 +20,14 @@ const CategorySection = () => {
       "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?q=80&w=1965&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     breads:
       "https://images.unsplash.com/photo-1559811814-e2c57b5e69df?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    biscuits:
+      "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?q=80&w=1965&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "dry-foods":
+      "https://images.unsplash.com/photo-1586201375761-83865001e31c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "fast-food":
+      "https://images.unsplash.com/photo-1561758033-d89a9ad46330?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    default:
+      "https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=2072&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
   };
 
   return (
@@ -59,9 +67,9 @@ const CategorySection = () => {
                   <div className="relative overflow-hidden rounded-lg shadow-lg h-64">
                     <img
                       src={
-                        categoryImages[
-                          category.slug as keyof typeof categoryImages
-                        ]
+                        category.image ||
+                        categoryImages[category.slug] ||
+                        categoryImages.default
                       }
                       alt={category.name}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"

@@ -107,8 +107,8 @@ const Checkout = () => {
   return (
     <Layout>
       <Helmet>
-        <title>Checkout | SweetBite Bakery</title>
-        <meta name="description" content="Complete your order at SweetBite Bakery." />
+        <title>Checkout | Probashi Bakery</title>
+        <meta name="description" content="Complete your order at Probashi Bakery." />
       </Helmet>
 
       <div className="container mx-auto px-4 py-16">

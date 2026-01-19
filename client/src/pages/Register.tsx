@@ -34,7 +34,7 @@ export default function Register() {
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to SweetBite!",
+        title: "Welcome to Probashi!",
         description: "Your account has been created successfully.",
       });
       navigate("/user-panel");
@@ -63,7 +63,7 @@ export default function Register() {
           </div>
           <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
           <CardDescription>
-            Join SweetBite and enjoy delicious bakery items
+            Join Probashi and enjoy delicious bakery items
           </CardDescription>
         </CardHeader>
         <CardContent>

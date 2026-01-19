@@ -11,7 +11,7 @@ const Footer = () => {
           {/* Brand Column */}
           <div className="lg:col-span-4">
             <div className="mb-6">
-              <h2 className="font-heading text-3xl font-bold mb-1 text-white">SweetBite</h2>
+              <h2 className="font-heading text-3xl font-bold mb-1 text-white">Probashi Bakery</h2>
               <p className="text-accent/80 text-sm uppercase tracking-widest font-semibold">Artisan Bakery</p>
             </div>
             <p className="mb-6 text-gray-300 leading-relaxed">
@@ -32,7 +32,7 @@ const Footer = () => {
               </div>
               <div className="flex items-center">
                 <Mail size={18} className="mr-3 text-accent" />
-                <span>hello@sweetbite.com</span>
+                <span>hello@Probashi Bakery.com</span>
               </div>
               <div className="flex items-center">
                 <Clock size={18} className="mr-3 text-accent" />
@@ -156,7 +156,7 @@ const Footer = () => {
       {/* Bottom Bar */}
       <div className="border-t border-white/10 py-6">
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
-          <p>&copy; {new Date().getFullYear()} SweetBite Bakery. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Probashi Bakery Bakery. All rights reserved.</p>
           <div className="mt-3 md:mt-0 flex space-x-6">
             <span className="hover:text-accent cursor-pointer transition-colors">Privacy Policy</span>
             <span className="hover:text-accent cursor-pointer transition-colors">Terms of Service</span>

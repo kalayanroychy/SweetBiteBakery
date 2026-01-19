@@ -14,7 +14,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'sweetbite-cart';
+const CART_STORAGE_KEY = 'probashi-cart';
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();

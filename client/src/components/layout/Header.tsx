@@ -63,7 +63,7 @@ const Header = () => {
               <Link href="/">
                 <div className="flex items-center cursor-pointer">
                   <span className="text-primary text-xl sm:text-2xl md:text-3xl font-heading font-bold tracking-tight">
-                    SweetBite
+                    Probashi Bakery
                   </span>
                   <span className="ml-1 text-accent/80 text-[10px] sm:text-xs uppercase tracking-widest font-semibold hidden xs:inline-block">
                     Bakery
@@ -199,7 +199,7 @@ const Header = () => {
             <Link href="/" onClick={() => setMobileMenuOpen(false)}>
               <div className="flex items-center cursor-pointer">
                 <span className="text-primary text-xl font-heading font-bold tracking-tight">
-                  SweetBite
+                  Probashi Bakery
                 </span>
                 <span className="ml-1 text-accent/80 text-[10px] uppercase tracking-widest font-semibold">
                   Bakery

@@ -67,7 +67,7 @@ export default function Login() {
           </div>
           <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
           <CardDescription>
-            Sign in to your SweetBite account
+            Sign in to your Probashi account
           </CardDescription>
         </CardHeader>
         <CardContent>

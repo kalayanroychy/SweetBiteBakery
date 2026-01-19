@@ -6,10 +6,10 @@ const AboutUs = () => {
   return (
     <Layout>
       <Helmet>
-        <title>About Us | SweetBite Bakery</title>
-        <meta name="description" content="Learn about SweetBite Bakery's story, our passion for baking, and our commitment to quality. Crafting delightful memories with every bite since 2015." />
-        <meta property="og:title" content="About Us | SweetBite Bakery" />
-        <meta property="og:description" content="Learn about SweetBite Bakery's story, our passion for baking, and our commitment to quality." />
+        <title>About Us | Probashi Bakery</title>
+        <meta name="description" content="Learn about Probashi Bakery's story, our passion for baking, and our commitment to quality. Crafting delightful memories with every bite since 2015." />
+        <meta property="og:title" content="About Us | Probashi Bakery" />
+        <meta property="og:description" content="Learn about Probashi Bakery's story, our passion for baking, and our commitment to quality." />
       </Helmet>
 
       {/* Hero Section */}
@@ -20,7 +20,7 @@ const AboutUs = () => {
               Our Story
             </h1>
             <p className="text-xl text-text-dark leading-relaxed">
-              Crafting delightful memories with every bite since 2015. Welcome to SweetBite Bakery, 
+              Crafting delightful memories with every bite since 2015. Welcome to Probashi Bakery, 
               where passion meets perfection in every creation.
             </p>
           </div>
@@ -36,7 +36,7 @@ const AboutUs = () => {
                 Our Mission
               </h2>
               <p className="text-lg text-gray-700 leading-relaxed mb-6">
-                At SweetBite Bakery, we believe that every occasion deserves something special. 
+                At Probashi Bakery, we believe that every occasion deserves something special. 
                 Our mission is to bring joy to your celebrations and comfort to your everyday moments 
                 through exceptional baked goods crafted with love and the finest ingredients.
               </p>
@@ -144,7 +144,7 @@ const AboutUs = () => {
             </h2>
             <div className="space-y-6 text-lg text-gray-700 leading-relaxed">
               <p>
-                SweetBite Bakery was born from a simple dream: to share the joy of homemade baked goods 
+                Probashi Bakery was born from a simple dream: to share the joy of homemade baked goods 
                 with our community. What started as a small kitchen operation in 2015 has grown into a 
                 beloved neighborhood bakery, but our core values remain unchanged.
               </p>
@@ -174,7 +174,7 @@ const AboutUs = () => {
             Visit Us Today
           </h2>
           <p className="text-white/90 text-lg mb-8 max-w-2xl mx-auto">
-            Come experience the SweetBite difference. Our doors are open, and we can't wait to serve you.
+            Come experience the Probashi difference. Our doors are open, and we can't wait to serve you.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 

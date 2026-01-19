@@ -41,7 +41,7 @@ export function getRandomTestimonials(count: number = 3) {
       rating: 5,
     },
     {
-      text: "I've tried many bakeries, but SweetBite's sourdough bread is hands down the best in town. I'm now a regular customer and can't imagine getting my bread anywhere else.",
+      text: "I've tried many bakeries, but Probashi's sourdough bread is hands down the best in town. I'm now a regular customer and can't imagine getting my bread anywhere else.",
       name: "Michael T.",
       role: "Bread Enthusiast",
       initials: "MT",
@@ -62,7 +62,7 @@ export function getRandomTestimonials(count: number = 3) {
       rating: 5,
     },
     {
-      text: "The gluten-free options at SweetBite are incredible! I can finally enjoy desserts without worrying about my dietary restrictions.",
+      text: "The gluten-free options at Probashi are incredible! I can finally enjoy desserts without worrying about my dietary restrictions.",
       name: "Lisa M.",
       role: "Gluten-Free Customer",
       initials: "LM",

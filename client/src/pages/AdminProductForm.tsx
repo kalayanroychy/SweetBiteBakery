@@ -6,32 +6,32 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { 
-  insertProductSchema, 
+import {
+  insertProductSchema,
   insertCategorySchema,
-  type InsertProduct, 
-  type ProductWithCategory, 
+  type InsertProduct,
+  type ProductWithCategory,
   type Category
 } from "@shared/schema";
 import { z } from "zod";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { 
-  Form, FormControl, FormDescription, FormField, 
-  FormItem, FormLabel, FormMessage 
+import {
+  Form, FormControl, FormDescription, FormField,
+  FormItem, FormLabel, FormMessage
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Select, SelectContent, SelectItem, 
-  SelectTrigger, SelectValue 
+import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, Loader2, Save, 
+import {
+  ArrowLeft, Loader2, Save,
   AlertTriangle, AlertCircle, Plus, Upload, Image as ImageIcon, X, Trash2
 } from "lucide-react";
 import { slugify } from "@/lib/utils";
@@ -67,6 +67,7 @@ const AdminProductForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryImage, setNewCategoryImage] = useState("");
   const [imagePreview, setImagePreview] = useState<string>("");
   const [additionalImages, setAdditionalImages] = useState<string[]>([]);
   const isEditMode = !!id;
@@ -87,7 +88,7 @@ const AdminProductForm = () => {
         const response = await fetch('/api/admin/products', {
           credentials: 'include'
         });
-        
+
         if (response.status === 401) {
           navigate('/admin/login');
         }
@@ -96,7 +97,7 @@ const AdminProductForm = () => {
         navigate('/admin/login');
       }
     };
-    
+
     checkAuth();
   }, [navigate]);
 
@@ -106,10 +107,10 @@ const AdminProductForm = () => {
   });
 
   // Fetch product details if in edit mode
-  const { 
-    data: product, 
-    isLoading: productLoading, 
-    error: productError 
+  const {
+    data: product,
+    isLoading: productLoading,
+    error: productError
   } = useQuery<ProductWithCategory>({
     queryKey: [`/api/admin/products/${id}`],
     enabled: isEditMode,
@@ -142,7 +143,7 @@ const AdminProductForm = () => {
     if (product && isEditMode) {
       const productImage = product.image || "/api/placeholder/300/300?text=No+Image";
       setImagePreview(productImage);
-      
+
       const productImages = Array.isArray(product.images) ? product.images : [];
       setAdditionalImages(productImages);
 
@@ -153,7 +154,7 @@ const AdminProductForm = () => {
 
       const productPriceVariations = (product.priceVariations as Record<string, number>) || {};
       setPriceVariations(productPriceVariations);
-      
+
       form.reset({
         name: product.name,
         slug: product.slug,
@@ -166,8 +167,8 @@ const AdminProductForm = () => {
         isBestseller: product.isBestseller,
         isNew: product.isNew,
         isPopular: product.isPopular,
-        dietaryOptions: Array.isArray(product.dietaryOptions) 
-          ? product.dietaryOptions as string[] 
+        dietaryOptions: Array.isArray(product.dietaryOptions)
+          ? product.dietaryOptions as string[]
           : [],
         sizes: productSizes,
         colors: productColors,
@@ -186,7 +187,7 @@ const AdminProductForm = () => {
         }
       }
     });
-    
+
     return () => subscription.unsubscribe();
   }, [form]);
 
@@ -242,7 +243,7 @@ const AdminProductForm = () => {
     const newSizes = sizes.filter(s => s !== size);
     setSizes(newSizes);
     form.setValue("sizes", newSizes);
-    
+
     // Remove price variations associated with this size
     const newPriceVariations = { ...priceVariations };
     Object.keys(newPriceVariations).forEach(key => {
@@ -269,7 +270,7 @@ const AdminProductForm = () => {
     const newColors = colors.filter(c => c !== color);
     setColors(newColors);
     form.setValue("colors", newColors);
-    
+
     // Remove price variations associated with this color
     const newPriceVariations = { ...priceVariations };
     Object.keys(newPriceVariations).forEach(key => {
@@ -292,20 +293,22 @@ const AdminProductForm = () => {
   // Create new category
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;
-    
+
     setIsCreatingCategory(true);
     try {
       const newCategory = await apiRequest("POST", "/api/admin/categories", {
         name: newCategoryName,
-        slug: slugify(newCategoryName)
+        slug: slugify(newCategoryName),
+        image: newCategoryImage || null
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
-      
+
       const categoryData = newCategory as any;
       form.setValue("categoryId", categoryData.id);
       setNewCategoryName("");
-      
+      setNewCategoryImage("");
+
       toast({
         title: "Category created",
         description: "New category has been successfully created",
@@ -337,7 +340,7 @@ const AdminProductForm = () => {
     data.priceVariations = priceVariations;
 
     setIsSubmitting(true);
-    
+
     try {
       if (isEditMode) {
         await apiRequest("PUT", `/api/admin/products/${id}`, data);
@@ -352,11 +355,11 @@ const AdminProductForm = () => {
           description: "The product has been successfully created",
         });
       }
-      
+
       queryClient.invalidateQueries({
         queryKey: ['/api/products'],
       });
-      
+
       navigate("/admin/products");
     } catch (error) {
       console.error("Form submission error:", error);
@@ -409,7 +412,7 @@ const AdminProductForm = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>{isEditMode ? "Edit" : "Add"} Product | SweetBite Admin</title>
+        <title>{isEditMode ? "Edit" : "Add"} Product | Probashi Admin</title>
         <meta name="robots" content="noindex" />
       </Helmet>
 
@@ -475,11 +478,11 @@ const AdminProductForm = () => {
                       <FormItem>
                         <FormLabel>Base Price (BDT)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
+                          <Input
+                            type="number"
+                            step="0.01"
                             min="0"
-                            placeholder="299" 
+                            placeholder="299"
                             {...field}
                             onChange={e => field.onChange(parseFloat(e.target.value))}
                             data-testid="input-price"
@@ -501,7 +504,7 @@ const AdminProductForm = () => {
                       <FormItem>
                         <FormLabel>Category</FormLabel>
                         <div className="flex gap-2">
-                          <Select 
+                          <Select
                             disabled={categoriesLoading}
                             onValueChange={(value) => field.onChange(parseInt(value))}
                             value={field.value?.toString()}
@@ -519,7 +522,7 @@ const AdminProductForm = () => {
                               ))}
                             </SelectContent>
                           </Select>
-                          
+
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button type="button" variant="outline" size="icon" data-testid="button-add-category">
@@ -537,11 +540,20 @@ const AdminProductForm = () => {
                                   onChange={(e) => setNewCategoryName(e.target.value)}
                                   data-testid="input-new-category"
                                 />
+                                <Input
+                                  placeholder="Category image URL (optional)"
+                                  value={newCategoryImage}
+                                  onChange={(e) => setNewCategoryImage(e.target.value)}
+                                  data-testid="input-new-category-image"
+                                />
                                 <div className="flex justify-end gap-2">
                                   <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => setNewCategoryName("")}
+                                    onClick={() => {
+                                      setNewCategoryName("");
+                                      setNewCategoryImage("");
+                                    }}
                                   >
                                     Cancel
                                   </Button>
@@ -573,9 +585,9 @@ const AdminProductForm = () => {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Describe your product..." 
-                          rows={4} 
+                        <Textarea
+                          placeholder="Describe your product..."
+                          rows={4}
                           {...field}
                           data-testid="textarea-description"
                         />
@@ -590,8 +602,8 @@ const AdminProductForm = () => {
                   <FormLabel>Primary Product Image</FormLabel>
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-4">
-                      <Input 
-                        type="file" 
+                      <Input
+                        type="file"
                         accept="image/*"
                         onChange={handleImageChange}
                         className="flex-1"
@@ -600,9 +612,9 @@ const AdminProductForm = () => {
                     </div>
                     {imagePreview && (
                       <div className="relative w-48 h-48 border-2 border-gray-300 rounded-lg overflow-hidden">
-                        <img 
-                          src={imagePreview} 
-                          alt="Primary preview" 
+                        <img
+                          src={imagePreview}
+                          alt="Primary preview"
                           className="w-full h-full object-cover"
                           data-testid="img-primary-preview"
                         />
@@ -615,8 +627,8 @@ const AdminProductForm = () => {
                 <div className="space-y-4">
                   <FormLabel>Additional Images</FormLabel>
                   <div className="flex items-center gap-4 mb-4">
-                    <Input 
-                      type="file" 
+                    <Input
+                      type="file"
                       accept="image/*"
                       multiple
                       onChange={handleAdditionalImagesChange}
@@ -629,9 +641,9 @@ const AdminProductForm = () => {
                       {additionalImages.map((img, index) => (
                         <div key={index} className="relative group">
                           <div className="relative w-full h-32 border-2 border-gray-300 rounded-lg overflow-hidden">
-                            <img 
-                              src={img} 
-                              alt={`Additional ${index + 1}`} 
+                            <img
+                              src={img}
+                              alt={`Additional ${index + 1}`}
                               className="w-full h-full object-cover"
                               data-testid={`img-additional-${index}`}
                             />
@@ -798,7 +810,7 @@ const AdminProductForm = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="isBestseller"
@@ -815,7 +827,7 @@ const AdminProductForm = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="isNew"
@@ -832,7 +844,7 @@ const AdminProductForm = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="isPopular"
@@ -901,8 +913,8 @@ const AdminProductForm = () => {
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={isSubmitting}
                     data-testid="button-submit"
                   >

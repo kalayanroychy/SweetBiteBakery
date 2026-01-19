@@ -45,7 +45,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)}></div>
         <div className="fixed inset-y-0 left-0 w-full max-w-xs flex flex-col bg-white shadow-xl">
           <div className="flex items-center justify-between h-16 px-6 bg-primary text-white">
-            <span className="text-xl font-heading font-bold">SweetBite Admin</span>
+            <span className="text-xl font-heading font-bold">Probashi Admin</span>
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
               <X className="h-6 w-6 text-white" />
             </Button>
@@ -93,7 +93,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <div className="flex flex-col w-64">
           <div className="flex flex-col flex-grow border-r border-gray-200 bg-white pt-5 pb-4 overflow-y-auto">
             <div className="flex items-center flex-shrink-0 px-6">
-              <h1 className="text-xl font-heading font-bold text-primary">SweetBite Admin</h1>
+              <h1 className="text-xl font-heading font-bold text-primary">Probashi Admin</h1>
             </div>
             <div className="mt-6 flex-1 flex flex-col">
               <nav className="flex-1 px-4 space-y-1">
@@ -138,7 +138,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <div className="md:hidden">
           <div className="flex items-center justify-between bg-white border-b border-gray-200 px-4 py-4">
             <div>
-              <h1 className="text-xl font-heading font-bold text-primary">SweetBite Admin</h1>
+              <h1 className="text-xl font-heading font-bold text-primary">Probashi Admin</h1>
             </div>
             <div>
               <Button

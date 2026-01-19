@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import Layout from "@/components/layout/Layout";
 import ProductFilter from "@/components/products/ProductFilter";
@@ -9,62 +9,85 @@ import { useQueryState } from "@/hooks/use-query-state";
 
 const Products = () => {
   const [queryParams] = useQueryState();
-  
-  // Fetch all products
-  const { 
-    data: products, 
-    isLoading: productsLoading, 
+
+  // Fetch products with infinite query for progressive loading
+  const {
+    data,
+    isLoading: productsLoading,
     error: productsError,
-    refetch: refetchProducts
-  } = useQuery<ProductWithCategory[]>({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteQuery({
     queryKey: ['/api/products'],
+    queryFn: async ({ pageParam = 0 }) => {
+      const limit = 6;
+      const offset = pageParam;
+      const response = await fetch(`/api/products?limit=${limit}&offset=${offset}`);
+      if (!response.ok) throw new Error('Failed to fetch products');
+      return response.json();
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.reduce((sum, page) => sum + page.products.length, 0);
+      return loadedCount < lastPage.total ? loadedCount : undefined;
+    },
+    initialPageParam: 0
   });
-  
+
+  // Flatten all pages into single array
+  const products = data?.pages.flatMap(page => page.products) || [];
+
   // Fetch categories for filtering
-  const { 
-    data: categories, 
-    isLoading: categoriesLoading 
+  const {
+    data: categories,
+    isLoading: categoriesLoading
   } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
   });
 
-  // Refetch products when query params change
-  useEffect(() => {
-    refetchProducts();
-  }, [queryParams, refetchProducts]);
 
   // Filter products based on query parameters
-  const filterProducts = (products: ProductWithCategory[]) => {
+  const filteredProducts = useMemo(() => {
     if (!products) return [];
 
     let filtered = [...products];
 
     // Filter by category
     if (queryParams.category) {
-      filtered = filtered.filter(p => 
-        p.category.slug === queryParams.category
+      filtered = filtered.filter(p =>
+        p.category?.slug === queryParams.category
       );
     }
 
     // Filter by dietary options
     if (queryParams.dietary) {
       const dietaryOptions = queryParams.dietary.split(',');
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p => {
+        // Handle if dietaryOptions is a string (JSON) or array
+        let productOptions: string[] = [];
+        if (Array.isArray(p.dietaryOptions)) {
+          productOptions = p.dietaryOptions as string[];
+        } else if (typeof p.dietaryOptions === 'string') {
+          try {
+            productOptions = JSON.parse(p.dietaryOptions);
+            if (!Array.isArray(productOptions)) productOptions = [];
+          } catch (e) {
+            productOptions = [];
+          }
+        }
+
         // Check if product has ALL selected dietary options
-        dietaryOptions.every(option => 
-          Array.isArray(p.dietaryOptions) && 
-          (p.dietaryOptions as string[]).includes(option)
-        )
-      );
+        return dietaryOptions.every(option => productOptions.includes(option));
+      });
     }
 
     // Filter by price range
     if (queryParams.price) {
       const priceRanges = queryParams.price.split(',');
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         priceRanges.some(range => {
           const [min, max] = range.split('-').map(Number);
-          return p.price >= min && p.price <= max;
+          return (p.price || 0) >= min && (p.price || 0) <= max;
         })
       );
     }
@@ -72,23 +95,21 @@ const Products = () => {
     // Filter by search term
     if (queryParams.q) {
       const searchTerm = queryParams.q.toLowerCase();
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(searchTerm) || 
-        p.description.toLowerCase().includes(searchTerm)
+      filtered = filtered.filter(p =>
+        (p.name?.toLowerCase() || '').includes(searchTerm) ||
+        (p.description?.toLowerCase() || '').includes(searchTerm)
       );
     }
 
     return filtered;
-  };
-
-  const filteredProducts = products ? filterProducts(products) : [];
+  }, [products, queryParams]);
 
   return (
     <Layout>
       <Helmet>
-        <title>Products | SweetBite Bakery</title>
+        <title>Products | Probashi Bakery</title>
         <meta name="description" content="Browse our delicious selection of freshly baked goods including cakes, pastries, cookies, and artisan breads." />
-        <meta property="og:title" content="Products | SweetBite Bakery" />
+        <meta property="og:title" content="Products | Probashi Bakery" />
         <meta property="og:description" content="Browse our delicious selection of freshly baked goods including cakes, pastries, cookies, and artisan breads." />
       </Helmet>
 
@@ -115,12 +136,15 @@ const Products = () => {
                 <ProductFilter categories={categories || []} />
               )}
             </div>
-            
+
             <div className="w-full lg:w-3/4">
-              <ProductGrid 
-                products={filteredProducts} 
-                isLoading={productsLoading} 
-                error={productsError} 
+              <ProductGrid
+                products={filteredProducts}
+                isLoading={productsLoading}
+                error={productsError}
+                fetchNextPage={fetchNextPage}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
               />
             </div>
           </div>

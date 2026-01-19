@@ -14,10 +14,10 @@ const Cart = () => {
   return (
     <Layout>
       <Helmet>
-        <title>Your Cart | SweetBite Bakery</title>
+        <title>Your Cart | Probashi Bakery</title>
         <meta
           name="description"
-          content="View and manage your shopping cart at SweetBite Bakery."
+          content="View and manage your shopping cart at Probashi Bakery."
         />
       </Helmet>
 
@@ -182,7 +182,7 @@ const Cart = () => {
 
                   <div className="space-y-4">
                     <Link href="/checkout">
-                      <Button className="w-full bg-success text-white hover:bg-opacity-90">
+                      <Button className="w-full border-primary text-primary hover:bg-primary hover:text-white">
                         Proceed to Checkout
                       </Button>
                     </Link>

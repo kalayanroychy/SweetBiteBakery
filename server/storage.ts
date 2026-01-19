@@ -1,5 +1,5 @@
-import { 
-  type Category, type InsertCategory, 
+import {
+  type Category, type InsertCategory,
   type Product, type InsertProduct,
   type User, type InsertUser,
   type Order, type InsertOrder,
@@ -17,7 +17,8 @@ export interface IStorage {
   deleteCategory(id: number): Promise<boolean>;
 
   // Product operations
-  getProducts(): Promise<Product[]>;
+  getProducts(limit?: number, offset?: number): Promise<Product[]>;
+  getProductsCount(): Promise<number>;
   getProductById(id: number): Promise<Product | undefined>;
   getProductBySlug(slug: string): Promise<Product | undefined>;
   getProductsByCategory(categoryId: number): Promise<Product[]>;
@@ -50,7 +51,7 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private orders: Map<number, Order>;
   private orderItems: Map<number, OrderItem>;
-  
+
   private categoryId: number;
   private productId: number;
   private userId: number;
@@ -63,7 +64,7 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.orders = new Map();
     this.orderItems = new Map();
-    
+
     this.categoryId = 1;
     this.productId = 1;
     this.userId = 1;
@@ -107,8 +108,20 @@ export class MemStorage implements IStorage {
   }
 
   // Product methods
-  async getProducts(): Promise<Product[]> {
-    return Array.from(this.products.values());
+  async getProducts(limit?: number, offset?: number): Promise<Product[]> {
+    const allProducts = Array.from(this.products.values());
+    if (offset !== undefined && limit !== undefined) {
+      return allProducts.slice(offset, offset + limit);
+    } else if (limit !== undefined) {
+      return allProducts.slice(0, limit);
+    } else if (offset !== undefined) {
+      return allProducts.slice(offset);
+    }
+    return allProducts;
+  }
+
+  async getProductsCount(): Promise<number> {
+    return this.products.size;
   }
 
   async getProductById(id: number): Promise<Product | undefined> {
@@ -136,9 +149,9 @@ export class MemStorage implements IStorage {
   async createProduct(product: InsertProduct): Promise<Product> {
     const id = this.productId++;
     const now = new Date();
-    const newProduct = { 
-      ...product, 
-      id, 
+    const newProduct = {
+      ...product,
+      id,
       createdAt: now
     } as Product;
     this.products.set(id, newProduct);

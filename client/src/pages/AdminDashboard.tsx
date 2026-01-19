@@ -67,7 +67,7 @@ const AdminDashboard = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Admin Dashboard | SweetBite Bakery</title>
+        <title>Admin Dashboard | Probashi Bakery</title>
         <meta name="robots" content="noindex" />
       </Helmet>
 

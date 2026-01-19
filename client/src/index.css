@@ -11,13 +11,13 @@
   --card-foreground: 20 14.3% 4.1%;
   --popover: 0 0% 100%;
   --popover-foreground: 20 14.3% 4.1%;
-  --primary: 23 58% 36%; /* SweetBite brown: #8B5A2B */
+  --primary: 23 58% 36%; /* Probashi brown: #8B5A2B */
   --primary-foreground: 60 9.1% 97.8%;
-  --secondary: 39 37% 92%; /* SweetBite cream: #F5F0E1 */
+  --secondary: 39 37% 92%; /* Probashi cream: #F5F0E1 */
   --secondary-foreground: 24 9.8% 10%;
   --muted: 60 4.8% 95.9%;
   --muted-foreground: 25 5.3% 44.7%;
-  --accent: 340 80% 89%; /* SweetBite pink: #F8C8DC */
+  --accent: 340 80% 89%; /* Probashi pink: #F8C8DC */
   --accent-foreground: 24 9.8% 10%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 60 9.1% 97.8%;
@@ -38,8 +38,8 @@
   --sidebar-accent-foreground: 24 9.8% 10%;
   --sidebar-border: 24 9.8% 86%;
   --sidebar-ring: 23 58% 36%;
-  --neutral: 39 40% 96%; /* SweetBite neutral: #F9F5EB */
-  --text-dark: 26 30% 19%; /* SweetBite text-dark: #3C2A21 */
+  --neutral: 39 40% 96%; /* Probashi neutral: #F9F5EB */
+  --text-dark: 26 30% 19%; /* Probashi text-dark: #3C2A21 */
   --success: 122.2 39% 49.8%;
   --error: 0 72.2% 50.6%;
   

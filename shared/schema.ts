@@ -7,11 +7,13 @@ export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  image: text("image"), // Category image URL
 });
 
 export const insertCategorySchema = createInsertSchema(categories).pick({
   name: true,
   slug: true,
+  image: true,
 });
 
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
