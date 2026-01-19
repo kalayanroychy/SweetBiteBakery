@@ -141,8 +141,6 @@ export async function loadInitialData(storage: IStorage): Promise<void> {
     // Add just a few products for now to avoid overwhelming the database
     for (const product of productsData) {
       await createProduct(product);
-      // Add a small delay to avoid overwhelming the connection
-      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     console.log("Initial data loaded successfully!");

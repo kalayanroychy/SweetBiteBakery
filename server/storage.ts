@@ -246,7 +246,9 @@ export class MemStorage implements IStorage {
 }
 
 // Import the DatabaseStorage
-import { DatabaseStorage } from "./database";
+import { DatabaseStorage } from "./database.js";
 
-// Create and export an instance of DatabaseStorage
-export const storage = new DatabaseStorage();
+// Create and export an instance of storage (fallback to MemStorage if no DB)
+export const storage = process.env.DATABASE_URL
+  ? new DatabaseStorage()
+  : new MemStorage();

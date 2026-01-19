@@ -18,9 +18,9 @@ if (!DATABASE_URL) {
 // Create connection pool with better retry and timeout settings
 export const pool = DATABASE_URL ? new Pool({
   connectionString: DATABASE_URL,
-  max: 10, // Reduce max connections to avoid exhausting serverless limits
-  idleTimeoutMillis: 60000, // Keep idle connections alive longer (1 min)
-  connectionTimeoutMillis: 30000, // Increased timeout to allow for cold starts (30s)
+  max: 10,
+  idleTimeoutMillis: 30000, // Reduced to 30s
+  connectionTimeoutMillis: 10000, // Reduced to 10s for faster failure/fallback
 }) : null;
 
 

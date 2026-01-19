@@ -14,24 +14,51 @@ import {
 } from "../shared/schema.js";
 import { checkAuth, authenticateUser } from "./auth.js";
 import { loadInitialData } from "./loadInitialData.js";
+import { checkDatabaseConnection } from "./db.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Check database connection before loading initial data
+  // Check database connection or initialize storage
   try {
-    const { checkDatabaseConnection } = await import("./db");
     const isConnected = await checkDatabaseConnection();
 
     if (isConnected) {
-      // Initialize data if storage is empty
+      console.log("Database connected, loading initial data if needed...");
       await loadInitialData(storage);
     } else {
-      console.warn("Database connection failed, skipping initial data load");
+      console.warn("Database connection failed, using MemStorage and loading initial data...");
+      await loadInitialData(storage);
     }
   } catch (error) {
-    console.error("Error checking database connection:", error);
+    console.error("Error checking database connection or initializing data:", error);
+    // Even if check fails, try to load data into whatever storage we have
+    await loadInitialData(storage);
   }
 
-  // API Routes
+  // Debug endpoint
+  app.get("/api/debug", async (_req: Request, res: Response) => {
+    try {
+      const { checkDatabaseConnection } = await import("./db.js");
+      const isConnected = await checkDatabaseConnection();
+      const hasUrl = !!process.env.DATABASE_URL;
+
+      res.json({
+        env: {
+          hasDatabaseUrl: hasUrl,
+          nodeEnv: process.env.NODE_ENV,
+          vercelEnv: process.env.VERCEL_ENV || "not detected",
+        },
+        database: {
+          connected: isConnected,
+          storageType: process.env.DATABASE_URL ? "Database" : "In-Memory",
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        message: "Debug check failed",
+        error: error.message
+      });
+    }
+  });
 
   // Categories
   app.get("/api/categories", async (_req: Request, res: Response) => {
