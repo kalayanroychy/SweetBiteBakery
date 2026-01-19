@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
+import mapPlaceholder from "@assets/map_placeholder.png";
 
 type ContactFormData = {
   name: string;
@@ -18,20 +19,20 @@ type ContactFormData = {
 const Contact = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ContactFormData>();
 
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
-    
+
     // Simulate form submission
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     toast({
       title: "Message sent!",
       description: "Thank you for contacting us. We'll get back to you soon.",
     });
-    
+
     reset();
     setIsSubmitting(false);
   };
@@ -53,7 +54,7 @@ const Contact = () => {
               Get in Touch
             </h1>
             <p className="text-xl text-text-dark leading-relaxed">
-              Have a question, special request, or just want to say hello? 
+              Have a question, special request, or just want to say hello?
               We'd love to hear from you!
             </p>
           </div>
@@ -69,7 +70,7 @@ const Contact = () => {
               <h2 className="font-heading text-3xl font-bold text-primary mb-8">
                 Contact Information
               </h2>
-              
+
               <div className="space-y-6">
                 <div className="flex items-start bg-neutral p-6 rounded-xl">
                   <div className="bg-primary text-white p-3 rounded-lg mr-4">
@@ -122,8 +123,23 @@ const Contact = () => {
               </div>
 
               {/* Map Placeholder */}
-              <div className="mt-8 bg-gray-200 rounded-xl h-64 flex items-center justify-center">
-                <p className="text-gray-500">Map placeholder</p>
+              <div className="mt-8 relative rounded-xl overflow-hidden h-64 shadow-md group border border-neutral hover:border-primary/30 transition-all duration-300">
+                <img
+                  src={mapPlaceholder}
+                  alt="Bakery Location Map"
+                  className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
+                />
+                <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-all duration-300" />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <a
+                    href="https://maps.google.com/?q=123+Bakery+Lane,+Sweet+District,+Metropolis"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-white text-primary px-6 py-2 rounded-full font-semibold shadow-lg hover:bg-primary hover:text-white transition-all transform translate-y-2 group-hover:translate-y-0"
+                  >
+                    View on Google Maps
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -132,7 +148,7 @@ const Contact = () => {
               <h2 className="font-heading text-3xl font-bold text-primary mb-8">
                 Send Us a Message
               </h2>
-              
+
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div>
                   <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -159,7 +175,7 @@ const Contact = () => {
                     id="email"
                     type="email"
                     data-testid="input-email"
-                    {...register("email", { 
+                    {...register("email", {
                       required: "Email is required",
                       pattern: {
                         value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -238,14 +254,14 @@ const Contact = () => {
             <h2 className="font-heading text-3xl font-bold text-primary mb-8 text-center">
               Frequently Asked Questions
             </h2>
-            
+
             <div className="space-y-4">
               <div className="bg-white p-6 rounded-xl">
                 <h3 className="font-semibold text-lg text-primary mb-2">
                   Do you take custom cake orders?
                 </h3>
                 <p className="text-gray-700">
-                  Yes! We love creating custom cakes for special occasions. Please contact us at least 
+                  Yes! We love creating custom cakes for special occasions. Please contact us at least
                   48 hours in advance for custom orders. You can call us or fill out the contact form above.
                 </p>
               </div>
@@ -255,7 +271,7 @@ const Contact = () => {
                   Do you offer delivery?
                 </h3>
                 <p className="text-gray-700">
-                  Yes, we offer delivery within a 10-mile radius of our bakery. Delivery fees may apply 
+                  Yes, we offer delivery within a 10-mile radius of our bakery. Delivery fees may apply
                   depending on distance. Contact us for more details on delivery options.
                 </p>
               </div>
@@ -265,7 +281,7 @@ const Contact = () => {
                   Do you have gluten-free or vegan options?
                 </h3>
                 <p className="text-gray-700">
-                  Absolutely! We offer a variety of gluten-free and vegan products. Check our products 
+                  Absolutely! We offer a variety of gluten-free and vegan products. Check our products
                   page or contact us to learn more about our dietary-friendly options.
                 </p>
               </div>
@@ -275,7 +291,7 @@ const Contact = () => {
                   Can I place a bulk order for an event?
                 </h3>
                 <p className="text-gray-700">
-                  Yes! We cater for events of all sizes. Please contact us with details about your event, 
+                  Yes! We cater for events of all sizes. Please contact us with details about your event,
                   and we'll work with you to create the perfect menu.
                 </p>
               </div>
