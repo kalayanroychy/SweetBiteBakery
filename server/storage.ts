@@ -4,7 +4,7 @@ import {
   type User, type InsertUser,
   type Order, type InsertOrder,
   type OrderItem, type InsertOrderItem
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -89,7 +89,11 @@ export class MemStorage implements IStorage {
 
   async createCategory(category: InsertCategory): Promise<Category> {
     const id = this.categoryId++;
-    const newCategory: Category = { ...category, id };
+    const newCategory: Category = {
+      ...category,
+      id,
+      image: category.image ?? null
+    };
     this.categories.set(id, newCategory);
     return newCategory;
   }

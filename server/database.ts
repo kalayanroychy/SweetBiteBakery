@@ -5,10 +5,10 @@ import {
   type User, type InsertUser,
   type Order, type InsertOrder,
   type OrderItem, type InsertOrderItem
-} from "@shared/schema";
-import { db } from "./db";
+} from "../shared/schema.js";
+import { db } from "./db.js";
 import { eq, desc, and, asc } from "drizzle-orm";
-import { IStorage } from "./storage";
+import { IStorage } from "./storage.js";
 
 // Helper function to ensure db is not null
 function getDb() {

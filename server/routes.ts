@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 import { ZodError } from "zod";
 import {
   insertCategorySchema,
@@ -11,9 +11,9 @@ import {
   registerSchema,
   newsletterSchema,
   contactFormSchema
-} from "@shared/schema";
-import { checkAuth, authenticateUser } from "./auth";
-import { loadInitialData } from "./loadInitialData";
+} from "../shared/schema.js";
+import { checkAuth, authenticateUser } from "./auth.js";
+import { loadInitialData } from "./loadInitialData.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Check database connection before loading initial data

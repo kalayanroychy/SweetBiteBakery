@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { storage } from './storage';
-import { LoginCredentials } from '@shared/schema';
+import { storage } from './storage.js';
+import { LoginCredentials } from '../shared/schema.js';
 import * as bcrypt from 'bcrypt';
 
 // Session augmentation for TypeScript
@@ -24,36 +24,36 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<{
   try {
     console.log('Trying to authenticate user:', credentials.username);
     const user = await storage.getUserByUsername(credentials.username);
-    
+
     if (!user) {
       console.log('User not found');
       return { success: false };
     }
-    
+
     console.log('User found, comparing credentials');
     // For the admin demo account, use a direct comparison with the known password
     if (credentials.username === 'admin' && credentials.password === 'admin123') {
       console.log('Demo admin login successful');
-      return { 
-        success: true, 
-        userId: user.id, 
-        isAdmin: true 
+      return {
+        success: true,
+        userId: user.id,
+        isAdmin: true
       };
     }
-    
+
     // For regular users, check password normally
     const passwordMatches = credentials.password === user.password;
-    
+
     if (!passwordMatches) {
       console.log('Password does not match');
       return { success: false };
     }
-    
+
     console.log('Login successful for user:', user.id);
-    return { 
-      success: true, 
-      userId: user.id, 
-      isAdmin: user.isAdmin 
+    return {
+      success: true,
+      userId: user.id,
+      isAdmin: user.isAdmin ?? false
     };
   } catch (error) {
     console.error('Error authenticating user:', error);

@@ -1,6 +1,6 @@
-import { IStorage } from "./storage";
-import { hashPassword } from "./auth";
-import { InsertProduct } from "@shared/schema";
+import { IStorage } from "./storage.js";
+import { hashPassword } from "./auth.js";
+import { InsertProduct } from "../shared/schema.js";
 
 /**
  * Loads initial data into the database if it's empty
