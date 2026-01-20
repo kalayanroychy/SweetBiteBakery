@@ -66,7 +66,7 @@ const Header = () => {
                     Probashi Bakery
                   </span>
                   <span className="ml-1 text-accent/80 text-[10px] sm:text-xs uppercase tracking-widest font-semibold hidden xs:inline-block">
-                    Sweet
+                    Bakery
                   </span>
                 </div>
               </Link>
@@ -106,6 +106,14 @@ const Header = () => {
                 <div className={`text-text-dark hover:text-primary transition-colors duration-300 font-semibold relative cursor-pointer ${location === "/contact" ? "text-primary" : ""}`}>
                   <span>Contact</span>
                   {location === "/contact" && (
+                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full transform translate-y-1"></span>
+                  )}
+                </div>
+              </Link>
+              <Link href="/order-tracking">
+                <div className={`text-text-dark hover:text-primary transition-colors duration-300 font-semibold relative cursor-pointer ${location === "/order-tracking" ? "text-primary" : ""}`}>
+                  <span>Order Tracking</span>
+                  {location === "/order-tracking" && (
                     <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full transform translate-y-1"></span>
                   )}
                 </div>
@@ -199,10 +207,10 @@ const Header = () => {
             <Link href="/" onClick={() => setMobileMenuOpen(false)}>
               <div className="flex items-center cursor-pointer">
                 <span className="text-primary text-xl font-heading font-bold tracking-tight">
-                  SweetBite Bakery
+                  Probashi Bakery
                 </span>
                 <span className="ml-1 text-accent/80 text-[10px] uppercase tracking-widest font-semibold">
-                  Sweet
+                  Bakery
                 </span>
               </div>
             </Link>

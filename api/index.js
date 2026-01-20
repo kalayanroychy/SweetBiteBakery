@@ -12518,6 +12518,227 @@ var init_db2 = __esm({
   }
 });
 
+// server/pathao.ts
+var pathao_exports = {};
+__export(pathao_exports, {
+  PathaoService: () => PathaoService,
+  getPathaoService: () => getPathaoService
+});
+import https from "https";
+import http from "http";
+function getPathaoService() {
+  if (!pathaoService) {
+    const config = {
+      clientId: process.env.PATHAO_CLIENT_ID || "",
+      clientSecret: process.env.PATHAO_CLIENT_SECRET || "",
+      username: process.env.PATHAO_USERNAME || "probashibakery@gmail.com",
+      password: process.env.PATHAO_PASSWORD || "Probashi1234@",
+      baseUrl: process.env.PATHAO_BASE_URL || "https://api-hermes.pathao.com",
+      storeId: process.env.PATHAO_STORE_ID ? parseInt(process.env.PATHAO_STORE_ID) : void 0
+    };
+    console.log("[Pathao] Initializing service with config:", {
+      baseUrl: config.baseUrl,
+      clientId: config.clientId ? "Present" : "Missing",
+      hasCredentials: !!(config.clientId && config.clientSecret)
+    });
+    pathaoService = new PathaoService(config);
+  }
+  return pathaoService;
+}
+var PathaoService, pathaoService;
+var init_pathao = __esm({
+  "server/pathao.ts"() {
+    "use strict";
+    PathaoService = class {
+      config;
+      accessToken = null;
+      tokenExpiry = null;
+      constructor(config) {
+        this.config = {
+          ...config,
+          baseUrl: config.baseUrl || "https://hermes-api.pathao.com"
+        };
+      }
+      // Helper to make HTTP/HTTPS requests
+      makeHttpRequest(url, options, postData) {
+        return new Promise((resolve, reject) => {
+          const parsedUrl = new URL(url);
+          const isHttps = parsedUrl.protocol === "https:";
+          const client = isHttps ? https : http;
+          const requestOptions = {
+            ...options,
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || (isHttps ? 443 : 80),
+            path: parsedUrl.pathname + parsedUrl.search
+          };
+          const req = client.request(requestOptions, (res) => {
+            let data = "";
+            res.on("data", (chunk) => {
+              data += chunk;
+            });
+            res.on("end", () => {
+              try {
+                const jsonData = JSON.parse(data);
+                resolve({ status: res.statusCode, data: jsonData, raw: data });
+              } catch (e) {
+                resolve({ status: res.statusCode, data: null, raw: data });
+              }
+            });
+          });
+          req.on("error", (error) => {
+            console.error("HTTP Request Error:", error);
+            reject(error);
+          });
+          if (postData) {
+            req.write(postData);
+          }
+          req.end();
+        });
+      }
+      // Authenticate and get access token
+      async authenticate() {
+        if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry - 3e5) {
+          return this.accessToken;
+        }
+        console.log("[Pathao] Authenticating...");
+        console.log("[Pathao] Using base URL:", this.config.baseUrl);
+        const authData = JSON.stringify({
+          client_id: this.config.clientId,
+          client_secret: this.config.clientSecret,
+          username: this.config.username,
+          password: this.config.password,
+          grant_type: "password"
+        });
+        const authEndpoint = `${this.config.baseUrl}/aladdin/api/v1/issue-token`;
+        console.log("[Pathao] Auth endpoint:", authEndpoint);
+        const result = await this.makeHttpRequest(
+          authEndpoint,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Content-Length": Buffer.byteLength(authData)
+            }
+          },
+          authData
+        );
+        console.log("[Pathao] Auth status:", result.status);
+        if (result.status !== 200) {
+          console.error("[Pathao] Auth failed response:", result.raw);
+          throw new Error(`Pathao authentication failed: ${result.status} - ${result.raw}`);
+        }
+        if (!result.data || !result.data.access_token) {
+          console.error("[Pathao] No access token in response:", result.raw);
+          throw new Error("Pathao API did not return an access token");
+        }
+        this.accessToken = result.data.access_token;
+        this.tokenExpiry = Date.now() + (result.data.expires_in || 86400) * 1e3;
+        console.log("[Pathao] Authenticated successfully");
+        return this.accessToken;
+      }
+      // Make authenticated API request  
+      async makeRequest(endpoint, options = {}) {
+        const token = await this.authenticate();
+        if (!token) {
+          throw new Error("Failed to obtain Pathao access token");
+        }
+        const postData = options.body ? JSON.stringify(options.body) : void 0;
+        const headers = {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        };
+        if (postData) {
+          headers["Content-Length"] = Buffer.byteLength(postData);
+        }
+        const result = await this.makeHttpRequest(
+          `${this.config.baseUrl}${endpoint}`,
+          {
+            method: options.method || "GET",
+            headers
+          },
+          postData
+        );
+        if (result.status && result.status >= 400) {
+          throw new Error(`Pathao API error: ${result.status} - ${result.raw}`);
+        }
+        return result.data;
+      }
+      // Get list of cities
+      async getCities() {
+        const data = await this.makeRequest("/aladdin/api/v1/city-list");
+        return data.data?.data || [];
+      }
+      // Get zones for a city
+      async getZones(cityId) {
+        const data = await this.makeRequest(`/aladdin/api/v1/cities/${cityId}/zone-list`);
+        return data.data?.data || [];
+      }
+      // Get areas for a zone
+      async getAreas(zoneId) {
+        const data = await this.makeRequest(`/aladdin/api/v1/zones/${zoneId}/area-list`);
+        return data.data?.data || [];
+      }
+      // Get merchant stores
+      async getStores() {
+        const data = await this.makeRequest("/aladdin/api/v1/stores");
+        return data.data?.data || [];
+      }
+      // Calculate delivery price
+      async calculatePrice(params) {
+        const data = await this.makeRequest("/aladdin/api/v1/merchant/price-plan", {
+          method: "POST",
+          body: {
+            store_id: params.storeId,
+            item_type: params.itemType,
+            delivery_type: params.deliveryType,
+            item_weight: params.item_weight || 0.5,
+            recipient_city: params.recipientCity,
+            recipient_zone: params.recipientZone
+          }
+        });
+        return {
+          price: data.data?.price || 0,
+          cod_charge: data.data?.cod_charge || 0,
+          promo_discount: data.data?.promo_discount || 0,
+          total_price: data.data?.total_fee || 0
+        };
+      }
+      // Create order/parcel
+      async createOrder(orderData) {
+        const data = await this.makeRequest("/aladdin/api/v1/orders", {
+          method: "POST",
+          body: {
+            store_id: orderData.storeId,
+            merchant_order_id: orderData.merchantOrderId,
+            recipient_name: orderData.recipientName,
+            recipient_phone: orderData.recipientPhone,
+            recipient_address: orderData.recipientAddress,
+            recipient_city: orderData.recipientCity,
+            recipient_zone: orderData.recipientZone,
+            recipient_area: orderData.recipientArea,
+            delivery_type: orderData.deliveryType,
+            item_type: orderData.itemType,
+            item_quantity: orderData.itemQuantity,
+            item_weight: orderData.itemWeight,
+            item_description: orderData.itemDescription,
+            amount_to_collect: orderData.amountToCollect,
+            special_instruction: orderData.specialInstruction || ""
+          }
+        });
+        return data;
+      }
+      // Track order
+      async trackOrder(consignmentId) {
+        const data = await this.makeRequest(`/aladdin/api/v1/orders/${consignmentId}`);
+        return data.data;
+      }
+    };
+    pathaoService = null;
+  }
+});
+
 // api/_handler.ts
 import express from "express";
 
@@ -13338,6 +13559,33 @@ async function registerRoutes(app2) {
       }
     }
   });
+  app2.get("/api/admin/orders", checkAuth, async (req, res) => {
+    try {
+      const orders2 = await storage.getOrders();
+      const ordersWithItems = await Promise.all(
+        orders2.map(async (order) => {
+          const items = await storage.getOrderItems(order.id);
+          const itemsWithProductNames = await Promise.all(
+            items.map(async (item) => {
+              const product = await storage.getProductById(item.productId);
+              return {
+                ...item,
+                productName: product?.name || `Product #${item.productId}`
+              };
+            })
+          );
+          return {
+            ...order,
+            items: itemsWithProductNames
+          };
+        })
+      );
+      res.json(ordersWithItems);
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
   app2.get("/api/orders/user", async (req, res) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -13407,6 +13655,126 @@ async function registerRoutes(app2) {
       } else {
         res.status(500).json({ message: "Failed to subscribe to newsletter" });
       }
+    }
+  });
+  app2.get("/api/pathao/cities", async (_req, res) => {
+    try {
+      const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
+      const pathao = getPathaoService2();
+      const cities = await pathao.getCities();
+      res.json(cities);
+    } catch (error) {
+      console.error("Pathao cities error:", error);
+      res.status(500).json({ message: "Failed to fetch cities", error: error.message });
+    }
+  });
+  app2.get("/api/pathao/zones/:cityId", async (req, res) => {
+    try {
+      const cityId = parseInt(req.params.cityId);
+      if (isNaN(cityId)) {
+        return res.status(400).json({ message: "Invalid city ID" });
+      }
+      const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
+      const pathao = getPathaoService2();
+      const zones = await pathao.getZones(cityId);
+      res.json(zones);
+    } catch (error) {
+      console.error("Pathao zones error:", error);
+      res.status(500).json({ message: "Failed to fetch zones", error: error.message });
+    }
+  });
+  app2.get("/api/pathao/areas/:zoneId", async (req, res) => {
+    try {
+      const zoneId = parseInt(req.params.zoneId);
+      if (isNaN(zoneId)) {
+        return res.status(400).json({ message: "Invalid zone ID" });
+      }
+      const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
+      const pathao = getPathaoService2();
+      const areas = await pathao.getAreas(zoneId);
+      res.json(areas);
+    } catch (error) {
+      console.error("Pathao areas error:", error);
+      res.status(500).json({ message: "Failed to fetch areas", error: error.message });
+    }
+  });
+  app2.get("/api/pathao/stores", async (_req, res) => {
+    try {
+      const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
+      const pathao = getPathaoService2();
+      const stores = await pathao.getStores();
+      res.json(stores);
+    } catch (error) {
+      console.error("Pathao stores error:", error);
+      res.status(500).json({ message: "Failed to fetch stores", error: error.message });
+    }
+  });
+  app2.post("/api/pathao/calculate-price", async (req, res) => {
+    try {
+      const { storeId, recipientCity, recipientZone, deliveryType, itemType, itemWeight } = req.body;
+      if (!storeId || !recipientCity || !recipientZone) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
+      const pathao = getPathaoService2();
+      const price = await pathao.calculatePrice({
+        storeId: parseInt(storeId),
+        recipientCity: parseInt(recipientCity),
+        recipientZone: parseInt(recipientZone),
+        deliveryType: deliveryType || "normal",
+        itemType: itemType || "parcel",
+        item_weight: parseFloat(itemWeight) || 0.5
+      });
+      res.json(price);
+    } catch (error) {
+      console.error("Pathao price calculation error:", error);
+      res.status(500).json({ message: "Failed to calculate price", error: error.message });
+    }
+  });
+  app2.post("/api/pathao/create-order", async (req, res) => {
+    try {
+      const orderData = req.body;
+      if (!orderData.storeId || !orderData.recipientName || !orderData.recipientPhone) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
+      const pathao = getPathaoService2();
+      const result = await pathao.createOrder({
+        storeId: parseInt(orderData.storeId),
+        merchantOrderId: orderData.merchantOrderId || `ORD-${Date.now()}`,
+        recipientName: orderData.recipientName,
+        recipientPhone: orderData.recipientPhone,
+        recipientAddress: orderData.recipientAddress,
+        recipientCity: parseInt(orderData.recipientCity),
+        recipientZone: parseInt(orderData.recipientZone),
+        recipientArea: parseInt(orderData.recipientArea),
+        deliveryType: orderData.deliveryType || "normal",
+        itemType: orderData.itemType || "parcel",
+        itemQuantity: parseInt(orderData.itemQuantity) || 1,
+        itemWeight: parseFloat(orderData.itemWeight) || 0.5,
+        itemDescription: orderData.itemDescription || "Bakery Items",
+        amountToCollect: parseFloat(orderData.amountToCollect) || 0,
+        specialInstruction: orderData.specialInstruction || ""
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("Pathao order creation error:", error);
+      res.status(500).json({ message: "Failed to create Pathao order", error: error.message });
+    }
+  });
+  app2.get("/api/pathao/track/:consignmentId", async (req, res) => {
+    try {
+      const { consignmentId } = req.params;
+      if (!consignmentId) {
+        return res.status(400).json({ message: "Consignment ID is required" });
+      }
+      const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
+      const pathao = getPathaoService2();
+      const tracking = await pathao.trackOrder(consignmentId);
+      res.json(tracking);
+    } catch (error) {
+      console.error("Pathao tracking error:", error);
+      res.status(500).json({ message: "Failed to track order", error: error.message });
     }
   });
   app2.post("/api/contact", async (req, res) => {

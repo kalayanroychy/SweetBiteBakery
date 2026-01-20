@@ -10,8 +10,9 @@ import Home from "@/pages/Home";
 import Products from "@/pages/Products";
 import ProductDetails from "@/pages/ProductDetails";
 import Cart from "@/pages/Cart";
-import Checkout from "@/pages/Checkout";
+import Checkout from "@/pages/CheckoutWithPathao";
 import OrderConfirmation from "@/pages/OrderConfirmation";
+import OrderTracking from "@/pages/OrderTracking";
 import AboutUs from "@/pages/AboutUs";
 import Contact from "@/pages/Contact";
 import AdminLogin from "@/pages/AdminLogin";
@@ -37,14 +38,15 @@ function Router() {
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/order-confirmation" component={OrderConfirmation} />
+      <Route path="/order-tracking" component={OrderTracking} />
       <Route path="/about" component={AboutUs} />
       <Route path="/contact" component={Contact} />
-      
+
       {/* User Authentication Routes */}
       <Route path="/register" component={Register} />
       <Route path="/login" component={Login} />
       <Route path="/user-panel" component={UserPanel} />
-      
+
       {/* Admin Routes */}
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
@@ -54,7 +56,7 @@ function Router() {
       <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/admin/customers" component={AdminCustomers} />
       <Route path="/admin/settings" component={AdminSettings} />
-      
+
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>

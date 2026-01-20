@@ -36,7 +36,7 @@ const Checkout = () => {
   const { toast } = useToast();
   const { cart, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Redirect if cart is empty
   if (cart.items.length === 0) {
     setLocation("/cart");
@@ -68,7 +68,7 @@ const Checkout = () => {
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // Prepare order with items
       const orderData = {
@@ -80,15 +80,15 @@ const Checkout = () => {
           subtotal: item.price * item.quantity
         }))
       };
-      
+
       const response = await apiRequest("POST", "/api/orders", orderData);
       const result = await response.json();
-      
+
       toast({
         title: "Order placed successfully!",
         description: "Thank you for your order. You will receive a confirmation shortly.",
       });
-      
+
       // Clear cart and redirect to confirmation page
       clearCart();
       setLocation("/order-confirmation");
@@ -259,7 +259,7 @@ const Checkout = () => {
                                     </div>
                                   </label>
                                 </div>
-                                
+
                                 <div className="flex items-center space-x-2 border border-gray-200 p-3 rounded-md cursor-pointer hover:border-primary">
                                   <RadioGroupItem value="cash" id="payment-cash" />
                                   <label htmlFor="payment-cash" className="flex items-center cursor-pointer w-full">
@@ -279,12 +279,12 @@ const Checkout = () => {
                     </div>
 
                     <div className="pt-4">
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-success text-white hover:bg-opacity-90"
+                      <Button
+                        type="submit"
+                        className="w-full bg-success hover:bg-success/90 text-white py-6 text-lg font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                         disabled={isSubmitting}
                       >
-                        {isSubmitting ? "Processing..." : "Place Order"}
+                        {isSubmitting ? "Processing..." : <>Place Order <CheckCircle size={20} /></>}
                       </Button>
                     </div>
                   </form>
@@ -298,7 +298,7 @@ const Checkout = () => {
             <Card>
               <CardContent className="p-6">
                 <h2 className="font-heading text-xl font-bold text-primary mb-4">Order Summary</h2>
-                
+
                 <div className="space-y-4 mb-6 max-h-80 overflow-y-auto">
                   {cart.items.map((item) => (
                     <div key={item.productId} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
@@ -315,7 +315,7 @@ const Checkout = () => {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="space-y-4 pt-3 border-t border-gray-200">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
@@ -330,7 +330,7 @@ const Checkout = () => {
                     <span>{formatCurrency(cart.subtotal)}</span>
                   </div>
                 </div>
-                
+
                 <div className="mt-6">
                   <div className="bg-neutral p-3 rounded-md flex items-start">
                     <CreditCard className="text-primary mr-2 mt-0.5 flex-shrink-0" size={18} />

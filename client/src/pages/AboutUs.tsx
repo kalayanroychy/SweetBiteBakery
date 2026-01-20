@@ -37,11 +37,11 @@ const AboutUs = () => {
               </h2>
               <p className="text-lg text-gray-700 leading-relaxed mb-6">
                 At Probashi Bakery, we believe that every occasion deserves something special. 
-                Our mission is to bring joy to your celebrations and comfort to your everyday moments 
+                Our mission is to bring joy to your celebrations and comfort to your everyday moments
                 through exceptional baked goods crafted with love and the finest ingredients.
               </p>
               <p className="text-lg text-gray-700 leading-relaxed">
-                We're committed to preserving traditional baking methods while embracing innovation, 
+                We're committed to preserving traditional baking methods while embracing innovation,
                 ensuring each product meets our high standards of quality, taste, and freshness.
               </p>
             </div>
@@ -101,7 +101,7 @@ const AboutUs = () => {
                 Craftsmanship
               </h3>
               <p className="text-gray-600 text-center leading-relaxed">
-                Each product is handcrafted by our skilled bakers who bring years of experience 
+                Each product is handcrafted by our skilled bakers who bring years of experience
                 and passion to their work.
               </p>
             </div>
@@ -114,7 +114,7 @@ const AboutUs = () => {
                 Community
               </h3>
               <p className="text-gray-600 text-center leading-relaxed">
-                We're proud to be part of this community, supporting local suppliers and creating 
+                We're proud to be part of this community, supporting local suppliers and creating
                 gathering spaces for neighbors.
               </p>
             </div>
@@ -127,7 +127,7 @@ const AboutUs = () => {
                 Innovation
               </h3>
               <p className="text-gray-600 text-center leading-relaxed">
-                While honoring tradition, we continuously explore new flavors and techniques 
+                While honoring tradition, we continuously explore new flavors and techniques
                 to delight our customers.
               </p>
             </div>
@@ -145,18 +145,18 @@ const AboutUs = () => {
             <div className="space-y-6 text-lg text-gray-700 leading-relaxed">
               <p>
                 Probashi Bakery was born from a simple dream: to share the joy of homemade baked goods 
-                with our community. What started as a small kitchen operation in 2015 has grown into a 
+                with our community. What started as a small kitchen operation in 2015 has grown into a
                 beloved neighborhood bakery, but our core values remain unchanged.
               </p>
               <p>
-                Our founder, inspired by family recipes passed down through generations, combined traditional 
-                techniques with modern flavors to create something truly special. Each recipe is tested and 
+                Our founder, inspired by family recipes passed down through generations, combined traditional
+                techniques with modern flavors to create something truly special. Each recipe is tested and
                 perfected to ensure it meets our exacting standards.
               </p>
               <p>
-                Today, we're proud to serve thousands of satisfied customers, from busy professionals grabbing 
-                their morning pastry to families celebrating life's special moments with our custom cakes. 
-                Every product that leaves our bakery carries with it our commitment to quality and our passion 
+                Today, we're proud to serve thousands of satisfied customers, from busy professionals grabbing
+                their morning pastry to families celebrating life's special moments with our custom cakes.
+                Every product that leaves our bakery carries with it our commitment to quality and our passion
                 for the craft.
               </p>
               <p className="font-semibold text-primary text-xl text-center pt-8">
@@ -177,14 +177,14 @@ const AboutUs = () => {
             Come experience the Probashi difference. Our doors are open, and we can't wait to serve you.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a 
+            <a
               href="/products"
               className="bg-white text-primary hover:bg-accent hover:text-primary px-8 py-4 rounded-xl font-semibold transition-all duration-300 inline-block"
               data-testid="link-products"
             >
               Browse Products
             </a>
-            <a 
+            <a
               href="/contact"
               className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-primary px-8 py-4 rounded-xl font-semibold transition-all duration-300 inline-block"
               data-testid="link-contact"

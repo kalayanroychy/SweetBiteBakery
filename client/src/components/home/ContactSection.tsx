@@ -204,7 +204,7 @@ const ContactSection = () => {
                   <Mail className="text-primary mt-1 mr-4" />
                   <div>
                     <h4 className="font-bold">Email</h4>
-                    <p className="text-text-dark">hello@SweetBite.com</p>
+                    <p className="text-text-dark">hello@ProbashiBakery.com</p>
                   </div>
                 </div>
               </div>

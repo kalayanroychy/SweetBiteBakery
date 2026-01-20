@@ -4,20 +4,44 @@ import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { ShoppingBag, Package, TrendingUp, Users, DollarSign } from "lucide-react";
+import { ShoppingBag, Package, TrendingUp, DollarSign, Loader2 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 // Types for admin dashboard
 interface DashboardStats {
   totalProducts: number;
   totalCategories: number;
   totalOrders: number;
+  totalRevenue: number;
   recentOrders: any[];
+  categoryDistribution: { name: string; count: number }[];
+  monthlyOrders: { name: string; orders: number }[];
 }
+
+// Status badge helper
+const getStatusBadge = (status: string) => {
+  const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+    pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
+    processing: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Processing' },
+    shipped: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Shipped' },
+    delivered: { bg: 'bg-green-100', text: 'text-green-800', label: 'Delivered' },
+    cancelled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelled' },
+  };
+
+  const config = statusConfig[status.toLowerCase()] || statusConfig.pending;
+
+  return (
+    <Badge className={`${config.bg} ${config.text} capitalize`}>
+      {config.label}
+    </Badge>
+  );
+};
 
 const AdminDashboard = () => {
   const [location, navigate] = useLocation();
-  
+
   // Check for admin authentication
   useEffect(() => {
     const checkAuth = async () => {
@@ -25,7 +49,7 @@ const AdminDashboard = () => {
         const response = await fetch('/api/admin/dashboard', {
           credentials: 'include'
         });
-        
+
         if (response.status === 401) {
           navigate('/admin/login');
         }
@@ -34,40 +58,50 @@ const AdminDashboard = () => {
         navigate('/admin/login');
       }
     };
-    
+
     checkAuth();
   }, [navigate]);
 
-  // Fetch dashboard data
+  // Fetch dashboard data from real API
   const { data, isLoading, error } = useQuery<DashboardStats>({
     queryKey: ['/api/admin/dashboard'],
-    // If this fails due to auth, we'll redirect in the effect above
-    retry: false 
+    retry: false
   });
 
-  // Sample data for charts (in a real app, this would come from the API)
-  const productCategoriesData = [
-    { name: 'Cakes', count: 5 },
-    { name: 'Pastries', count: 4 },
-    { name: 'Cookies', count: 3 },
-    { name: 'Breads', count: 4 },
-  ];
-
-  const ordersByMonthData = [
-    { name: 'Jan', orders: 42 },
-    { name: 'Feb', orders: 55 },
-    { name: 'Mar', orders: 67 },
-    { name: 'Apr', orders: 80 },
-    { name: 'May', orders: 95 },
-    { name: 'Jun', orders: 110 },
-  ];
-
   const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Failed to load dashboard data</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
       <Helmet>
-        <title>Admin Dashboard | Probashi Bakery</title>
+        <title>Admin Dashboard | SweetBite Bakery</title>
         <meta name="robots" content="noindex" />
       </Helmet>
 
@@ -84,7 +118,7 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-gray-500 text-sm">Total Products</p>
                 <h3 className="text-2xl font-bold">
-                  {isLoading ? "..." : data?.totalProducts || 16}
+                  {data?.totalProducts || 0}
                 </h3>
               </div>
             </CardContent>
@@ -98,7 +132,7 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-gray-500 text-sm">Categories</p>
                 <h3 className="text-2xl font-bold">
-                  {isLoading ? "..." : data?.totalCategories || 4}
+                  {data?.totalCategories || 0}
                 </h3>
               </div>
             </CardContent>
@@ -110,9 +144,9 @@ const AdminDashboard = () => {
                 <TrendingUp className="h-5 w-5 text-success" />
               </div>
               <div>
-                <p className="text-gray-500 text-sm">Orders</p>
+                <p className="text-gray-500 text-sm">Total Orders</p>
                 <h3 className="text-2xl font-bold">
-                  {isLoading ? "..." : data?.totalOrders || 125}
+                  {data?.totalOrders || 0}
                 </h3>
               </div>
             </CardContent>
@@ -124,8 +158,10 @@ const AdminDashboard = () => {
                 <DollarSign className="h-5 w-5 text-gray-700" />
               </div>
               <div>
-                <p className="text-gray-500 text-sm">Revenue</p>
-                <h3 className="text-2xl font-bold">$5,240</h3>
+                <p className="text-gray-500 text-sm">Total Revenue</p>
+                <h3 className="text-2xl font-bold">
+                  {formatCurrency(data?.totalRevenue || 0)}
+                </h3>
               </div>
             </CardContent>
           </Card>
@@ -138,27 +174,33 @@ const AdminDashboard = () => {
               <CardTitle>Products by Category</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={productCategoriesData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="count"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {productCategoriesData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              {data?.categoryDistribution && data.categoryDistribution.length > 0 ? (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data.categoryDistribution}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="count"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {data.categoryDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-80 flex items-center justify-center text-gray-500">
+                  No category data available
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -167,25 +209,31 @@ const AdminDashboard = () => {
               <CardTitle>Orders by Month</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={ordersByMonthData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="orders" fill="hsl(var(--primary))" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {data?.monthlyOrders && data.monthlyOrders.length > 0 ? (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={data.monthlyOrders}
+                      margin={{
+                        top: 20,
+                        right: 30,
+                        left: 20,
+                        bottom: 5,
+                      }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="orders" fill="hsl(var(--primary))" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-80 flex items-center justify-center text-gray-500">
+                  No order data available
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -196,77 +244,44 @@ const AdminDashboard = () => {
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4">Order ID</th>
-                    <th className="text-left py-3 px-4">Customer</th>
-                    <th className="text-left py-3 px-4">Date</th>
-                    <th className="text-left py-3 px-4">Amount</th>
-                    <th className="text-left py-3 px-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Sample data - in a real app, this would use data?.recentOrders */}
-                  <tr className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-xs">#SB-123456</td>
-                    <td className="py-3 px-4">Jennifer D.</td>
-                    <td className="py-3 px-4">June 15, 2023</td>
-                    <td className="py-3 px-4">$54.99</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Completed
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-xs">#SB-123455</td>
-                    <td className="py-3 px-4">Michael T.</td>
-                    <td className="py-3 px-4">June 14, 2023</td>
-                    <td className="py-3 px-4">$32.50</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Processing
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-xs">#SB-123454</td>
-                    <td className="py-3 px-4">Sarah K.</td>
-                    <td className="py-3 px-4">June 14, 2023</td>
-                    <td className="py-3 px-4">$67.75</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Completed
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-xs">#SB-123453</td>
-                    <td className="py-3 px-4">David R.</td>
-                    <td className="py-3 px-4">June 13, 2023</td>
-                    <td className="py-3 px-4">$89.99</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        Pending
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-xs">#SB-123452</td>
-                    <td className="py-3 px-4">Lisa M.</td>
-                    <td className="py-3 px-4">June 12, 2023</td>
-                    <td className="py-3 px-4">$42.25</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Completed
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {data?.recentOrders && data.recentOrders.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4">Order ID</th>
+                      <th className="text-left py-3 px-4">Customer</th>
+                      <th className="text-left py-3 px-4">Date</th>
+                      <th className="text-left py-3 px-4">Amount</th>
+                      <th className="text-left py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recentOrders.map((order) => (
+                      <tr key={order.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4 font-mono text-xs">#{order.id}</td>
+                        <td className="py-3 px-4">{order.customerName}</td>
+                        <td className="py-3 px-4">
+                          {new Date(order.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        <td className="py-3 px-4">{formatCurrency(order.total)}</td>
+                        <td className="py-3 px-4">
+                          {getStatusBadge(order.status)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No recent orders
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

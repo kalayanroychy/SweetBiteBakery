@@ -23,7 +23,7 @@ const HeroSection = () => {
 
             {/* Description paragraph */}
             <p className="text-text-dark text-base sm:text-lg mb-8 max-w-lg leading-relaxed">
-              Welcome to SweetBite, where every treat tells a story. We create handcrafted pastries, cakes,
+              Welcome to Probashi Bakery, where every treat tells a story. We create handcrafted pastries, cakes,
               and breads using only the finest ingredients and time-honored recipes passed down through generations.
             </p>
 

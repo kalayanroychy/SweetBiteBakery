@@ -215,8 +215,8 @@ const ProductDetails = () => {
                         key={index}
                         onClick={() => setCurrentImageIndex(index)}
                         className={`relative rounded-lg overflow-hidden transition-all duration-300 ${index === currentImageIndex
-                            ? "ring-2 ring-[hsl(var(--cinnamon))] ring-offset-2 shadow-lg scale-105"
-                            : "hover:scale-105 opacity-60 hover:opacity-100"
+                          ? "ring-2 ring-[hsl(var(--cinnamon))] ring-offset-2 shadow-lg scale-105"
+                          : "hover:scale-105 opacity-60 hover:opacity-100"
                           }`}
                       >
                         <img
@@ -363,8 +363,8 @@ const ProductDetails = () => {
                         key={index}
                         onClick={() => setSelectedSize(size)}
                         className={`relative px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${selectedSize === size
-                            ? "bg-gradient-to-r from-[hsl(var(--cinnamon))] to-[hsl(var(--chocolate))] text-white shadow-lg scale-105"
-                            : "bg-white dark:bg-gray-700 border-2 border-[hsl(var(--blush))] text-[hsl(var(--chocolate))] dark:text-white hover:border-[hsl(var(--cinnamon))] hover:scale-105"
+                          ? "bg-gradient-to-r from-[hsl(var(--cinnamon))] to-[hsl(var(--chocolate))] text-white shadow-lg scale-105"
+                          : "bg-white dark:bg-gray-700 border-2 border-[hsl(var(--blush))] text-[hsl(var(--chocolate))] dark:text-white hover:border-[hsl(var(--cinnamon))] hover:scale-105"
                           }`}
                       >
                         {size}
@@ -393,8 +393,8 @@ const ProductDetails = () => {
                         key={index}
                         onClick={() => setSelectedColor(color)}
                         className={`relative px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${selectedColor === color
-                            ? "bg-gradient-to-r from-[hsl(var(--cinnamon))] to-[hsl(var(--chocolate))] text-white shadow-lg scale-105"
-                            : "bg-white dark:bg-gray-700 border-2 border-[hsl(var(--blush))] text-[hsl(var(--chocolate))] dark:text-white hover:border-[hsl(var(--cinnamon))] hover:scale-105"
+                          ? "bg-gradient-to-r from-[hsl(var(--cinnamon))] to-[hsl(var(--chocolate))] text-white shadow-lg scale-105"
+                          : "bg-white dark:bg-gray-700 border-2 border-[hsl(var(--blush))] text-[hsl(var(--chocolate))] dark:text-white hover:border-[hsl(var(--cinnamon))] hover:scale-105"
                           }`}
                       >
                         {color}

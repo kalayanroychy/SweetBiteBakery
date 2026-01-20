@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Card, 
+import {
+  Card,
   CardContent,
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import {
   Table,
@@ -35,7 +35,7 @@ const getInitials = (name: string) => {
 // Get a deterministic color based on a string
 const getAvatarColor = (name: string) => {
   if (!name) return 'bg-gray-300';
-  
+
   const colors = [
     'bg-red-200 text-red-800',
     'bg-blue-200 text-blue-800',
@@ -46,84 +46,36 @@ const getAvatarColor = (name: string) => {
     'bg-indigo-200 text-indigo-800',
     'bg-teal-200 text-teal-800'
   ];
-  
+
   // Simple hash function to get a consistent color for the same name
   const hash = name.split('').reduce((acc, char) => {
     return acc + char.charCodeAt(0);
   }, 0);
-  
+
   return colors[hash % colors.length];
 };
 
 type Customer = {
-  id: number;
-  name: string;
   email: string;
-  phone?: string;
-  orderCount: number;
+  name: string;
+  phone: string;
+  totalOrders: number;
   totalSpent: number;
-  lastOrderDate: string;
+  lastOrderDate: string | null;
+  isRegistered: boolean;
+  userId?: number;
 };
-
-// Mock data for customers - this would normally come from your API
-const mockCustomers: Customer[] = [
-  {
-    id: 1,
-    name: 'Sarah Johnson',
-    email: 'sarah.j@example.com',
-    phone: '+1 (555) 123-4567',
-    orderCount: 5,
-    totalSpent: 245.30,
-    lastOrderDate: '2025-05-15T14:30:00Z',
-  },
-  {
-    id: 2,
-    name: 'Michael Chen',
-    email: 'michael.c@example.com',
-    phone: '+1 (555) 987-6543',
-    orderCount: 3,
-    totalSpent: 178.50,
-    lastOrderDate: '2025-05-10T09:15:00Z',
-  },
-  {
-    id: 3,
-    name: 'Emma Wilson',
-    email: 'emma.w@example.com',
-    orderCount: 2,
-    totalSpent: 87.20,
-    lastOrderDate: '2025-04-28T16:45:00Z',
-  },
-  {
-    id: 4,
-    name: 'Daniel Roberts',
-    email: 'daniel.r@example.com',
-    phone: '+1 (555) 234-5678',
-    orderCount: 7,
-    totalSpent: 356.75,
-    lastOrderDate: '2025-05-18T11:30:00Z',
-  },
-  {
-    id: 5,
-    name: 'Olivia Kim',
-    email: 'olivia.k@example.com',
-    orderCount: 1,
-    totalSpent: 42.99,
-    lastOrderDate: '2025-05-01T13:20:00Z',
-  }
-];
 
 export default function AdminCustomers() {
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // In a real app, you would fetch customers from your API
-  // const { data: customers = [], isLoading } = useQuery({
-  //   queryKey: ['/api/admin/customers'],
-  //   staleTime: 60000, // 1 minute
-  // });
-  
-  // Using mock data for now
-  const customers = mockCustomers;
-  const isLoading = false;
+
+  // Fetch customers from the API
+  const { data, isLoading } = useQuery<{ customers: Customer[]; total: number }>({
+    queryKey: ['/api/admin/customers'],
+    staleTime: 60000, // 1 minute
+  });
+
+  const customers: Customer[] = data?.customers || [];
 
   // Filter customers based on search query
   const filteredCustomers = customers.filter((customer) => {
@@ -191,7 +143,7 @@ export default function AdminCustomers() {
                   </TableHeader>
                   <TableBody>
                     {filteredCustomers.map((customer) => (
-                      <TableRow key={customer.id}>
+                      <TableRow key={customer.email}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className={getAvatarColor(customer.name)}>
@@ -199,7 +151,7 @@ export default function AdminCustomers() {
                             </Avatar>
                             <div>
                               <div className="font-medium">{customer.name}</div>
-                              <div className="text-sm text-muted-foreground">ID: #{customer.id}</div>
+                              <div className="text-sm text-muted-foreground">{customer.isRegistered ? 'Registered' : 'Guest'}</div>
                             </div>
                           </div>
                         </TableCell>
@@ -217,14 +169,14 @@ export default function AdminCustomers() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{customer.orderCount}</TableCell>
+                        <TableCell>{customer.totalOrders}</TableCell>
                         <TableCell>৳{customer.totalSpent.toFixed(2)}</TableCell>
                         <TableCell>
-                          {new Date(customer.lastOrderDate).toLocaleDateString('en-US', {
+                          {customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric'
-                          })}
+                          }) : 'N/A'}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" title="View customer details">

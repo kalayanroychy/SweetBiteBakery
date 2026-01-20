@@ -402,6 +402,196 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Dashboard statistics
+  app.get("/api/admin/dashboard", checkAuth, async (req: Request, res: Response) => {
+    try {
+      // Fetch all necessary data in parallel for better performance
+      const [products, categories, orders] = await Promise.all([
+        storage.getProducts(),
+        storage.getCategories(),
+        storage.getOrders()
+      ]);
+
+      // Calculate total revenue
+      const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+
+      // Get recent orders (last 10)
+      const recentOrders = orders
+        .sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        })
+        .slice(0, 10);
+
+      // Calculate products by category
+      const categoryDistribution = categories.map(category => {
+        const count = products.filter(p => p.categoryId === category.id).length;
+        return {
+          name: category.name,
+          count
+        };
+      });
+
+      // Calculate orders by month (last 6 months)
+      const now = new Date();
+      const monthlyOrders = [];
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+        const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+        const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+        const count = orders.filter(order => {
+          if (!order.createdAt) return false;
+          const orderDate = new Date(order.createdAt);
+          return orderDate >= monthStart && orderDate <= monthEnd;
+        }).length;
+
+        monthlyOrders.push({
+          name: monthName,
+          orders: count
+        });
+      }
+
+      res.json({
+        totalProducts: products.length,
+        totalCategories: categories.length,
+        totalOrders: orders.length,
+        totalRevenue,
+        recentOrders,
+        categoryDistribution,
+        monthlyOrders
+      });
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard data" });
+    }
+  });
+
+  // Admin: Get all orders (for admin panel)
+  app.get("/api/admin/orders", checkAuth, async (req: Request, res: Response) => {
+    try {
+      const orders = await storage.getOrders();
+
+      // Fetch order items for each order and include product names
+      const ordersWithItems = await Promise.all(
+        orders.map(async (order) => {
+          const items = await storage.getOrderItems(order.id);
+
+          // Get product details for each item
+          const itemsWithProductNames = await Promise.all(
+            items.map(async (item) => {
+              const product = await storage.getProductById(item.productId);
+              return {
+                ...item,
+                productName: product?.name || `Product #${item.productId}`
+              };
+            })
+          );
+
+          return {
+            ...order,
+            items: itemsWithProductNames
+          };
+        })
+      );
+
+      res.json(ordersWithItems);
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Admin: Update order status
+  app.patch("/api/admin/orders/:id/status", checkAuth, async (req: Request, res: Response) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (isNaN(orderId)) {
+        return res.status(400).json({ message: "Invalid order ID" });
+      }
+
+      if (!status || !['pending', 'processing', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const updated = await storage.updateOrderStatus(orderId, status);
+
+      if (!updated) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      res.json({ success: true, order: updated });
+    } catch (error) {
+      console.error("Failed to update order status:", error);
+      res.status(500).json({ message: "Failed to update order status" });
+    }
+  });
+
+  // Admin: Get all customers (from users and orders)
+  app.get("/api/admin/customers", checkAuth, async (req: Request, res: Response) => {
+    try {
+      const orders = await storage.getOrders();
+
+      // Create a map to store unique customers by email
+      const customersMap = new Map<string, {
+        email: string;
+        name: string;
+        phone: string;
+        totalOrders: number;
+        totalSpent: number;
+        lastOrderDate: Date | null;
+        isRegistered: boolean;
+        userId?: number;
+      }>();
+
+      // Process orders to extract customer data
+      for (const order of orders) {
+        const email = order.customerEmail.toLowerCase();
+
+        if (customersMap.has(email)) {
+          // Update existing customer
+          const customer = customersMap.get(email)!;
+          customer.totalOrders += 1;
+          customer.totalSpent += order.total || 0;
+
+          // Update last order date if this order is more recent
+          const orderDate = order.createdAt ? new Date(order.createdAt) : null;
+          if (orderDate && (!customer.lastOrderDate || orderDate > customer.lastOrderDate)) {
+            customer.lastOrderDate = orderDate;
+          }
+        } else {
+          // Add new customer from order
+          customersMap.set(email, {
+            email: order.customerEmail,
+            name: order.customerName,
+            phone: order.customerPhone,
+            totalOrders: 1,
+            totalSpent: order.total || 0,
+            lastOrderDate: order.createdAt ? new Date(order.createdAt) : null,
+            isRegistered: false,
+            userId: order.userId || undefined
+          });
+        }
+      }
+
+      // Convert map to array and sort by total spent (descending)
+      const customers = Array.from(customersMap.values())
+        .sort((a, b) => b.totalSpent - a.totalSpent);
+
+      res.json({
+        customers,
+        total: customers.length
+      });
+    } catch (error) {
+      console.error("Failed to fetch customers:", error);
+      res.status(500).json({ message: "Failed to fetch customers" });
+    }
+  });
+
   // Get user's orders (for logged-in users)
   app.get("/api/orders/user", async (req: Request, res: Response) => {
     if (!req.session.userId) {
@@ -415,6 +605,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(userOrders);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Public: Track order by ID and email
+  app.get("/api/orders/track", async (req: Request, res: Response) => {
+    try {
+      const { orderId, email } = req.query;
+
+      if (!orderId || !email) {
+        return res.status(400).json({ message: "Order ID and email are required" });
+      }
+
+      const id = parseInt(orderId as string);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid order ID" });
+      }
+
+      // Get the order
+      const order = await storage.getOrderById(id);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Verify email matches (case-insensitive)
+      if (order.customerEmail.toLowerCase() !== (email as string).toLowerCase()) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Get order items with product names and images
+      const items = await storage.getOrderItems(id);
+      const itemsWithProductDetails = await Promise.all(
+        items.map(async (item) => {
+          const product = await storage.getProductById(item.productId);
+          return {
+            ...item,
+            productName: product?.name || `Product #${item.productId}`,
+            productImage: product?.image || null
+          };
+        })
+      );
+
+      res.json({
+        ...order,
+        items: itemsWithProductDetails
+      });
+    } catch (error) {
+      console.error("Failed to track order:", error);
+      res.status(500).json({ message: "Failed to track order" });
     }
   });
 
@@ -492,6 +730,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+
+  // =================== PATHAO COURIER API ROUTES ===================
+
+  // Get Pathao cities
+  app.get("/api/pathao/cities", async (_req: Request, res: Response) => {
+    try {
+      const { getPathaoService } = await import("./pathao.js");
+      const pathao = getPathaoService();
+      const cities = await pathao.getCities();
+      res.json(cities);
+    } catch (error: any) {
+      console.error("Pathao cities error:", error);
+      res.status(500).json({ message: "Failed to fetch cities", error: error.message });
+    }
+  });
+
+  // Get Pathao zones for a city
+  app.get("/api/pathao/zones/:cityId", async (req: Request, res: Response) => {
+    try {
+      const cityId = parseInt(req.params.cityId);
+      if (isNaN(cityId)) {
+        return res.status(400).json({ message: "Invalid city ID" });
+      }
+
+      const { getPathaoService } = await import("./pathao.js");
+      const pathao = getPathaoService();
+      const zones = await pathao.getZones(cityId);
+      res.json(zones);
+    } catch (error: any) {
+      console.error("Pathao zones error:", error);
+      res.status(500).json({ message: "Failed to fetch zones", error: error.message });
+    }
+  });
+
+  // Get Pathao areas for a zone
+  app.get("/api/pathao/areas/:zoneId", async (req: Request, res: Response) => {
+    try {
+      const zoneId = parseInt(req.params.zoneId);
+      if (isNaN(zoneId)) {
+        return res.status(400).json({ message: "Invalid zone ID" });
+      }
+
+      const { getPathaoService } = await import("./pathao.js");
+      const pathao = getPathaoService();
+      const areas = await pathao.getAreas(zoneId);
+      res.json(areas);
+    } catch (error: any) {
+      console.error("Pathao areas error:", error);
+      res.status(500).json({ message: "Failed to fetch areas", error: error.message });
+    }
+  });
+
+  // Get Pathao stores
+  app.get("/api/pathao/stores", async (_req: Request, res: Response) => {
+    try {
+      const { getPathaoService } = await import("./pathao.js");
+      const pathao = getPathaoService();
+      const stores = await pathao.getStores();
+      res.json(stores);
+    } catch (error: any) {
+      console.error("Pathao stores error:", error);
+      res.status(500).json({ message: "Failed to fetch stores", error: error.message });
+    }
+  });
+
+  // Calculate delivery price
+  app.post("/api/pathao/calculate-price", async (req: Request, res: Response) => {
+    try {
+      const { storeId, recipientCity, recipientZone, deliveryType, itemType, itemWeight } = req.body;
+
+      if (!storeId || !recipientCity || !recipientZone) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const { getPathaoService } = await import("./pathao.js");
+      const pathao = getPathaoService();
+
+      const price = await pathao.calculatePrice({
+        storeId: parseInt(storeId),
+        recipientCity: parseInt(recipientCity),
+        recipientZone: parseInt(recipientZone),
+        deliveryType: deliveryType || "normal",
+        itemType: itemType || "parcel",
+        item_weight: parseFloat(itemWeight) || 0.5,
+      });
+
+      res.json(price);
+    } catch (error: any) {
+      console.error("Pathao price calculation error:", error);
+      res.status(500).json({ message: "Failed to calculate price", error: error.message });
+    }
+  });
+
+  // Create Pathao order
+  app.post("/api/pathao/create-order", async (req: Request, res: Response) => {
+    try {
+      const orderData = req.body;
+
+      if (!orderData.storeId || !orderData.recipientName || !orderData.recipientPhone) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const { getPathaoService } = await import("./pathao.js");
+      const pathao = getPathaoService();
+
+      const result = await pathao.createOrder({
+        storeId: parseInt(orderData.storeId),
+        merchantOrderId: orderData.merchantOrderId || `ORD-${Date.now()}`,
+        recipientName: orderData.recipientName,
+        recipientPhone: orderData.recipientPhone,
+        recipientAddress: orderData.recipientAddress,
+        recipientCity: parseInt(orderData.recipientCity),
+        recipientZone: parseInt(orderData.recipientZone),
+        recipientArea: parseInt(orderData.recipientArea),
+        deliveryType: orderData.deliveryType || "normal",
+        itemType: orderData.itemType || "parcel",
+        itemQuantity: parseInt(orderData.itemQuantity) || 1,
+        itemWeight: parseFloat(orderData.itemWeight) || 0.5,
+        itemDescription: orderData.itemDescription || "Bakery Items",
+        amountToCollect: parseFloat(orderData.amountToCollect) || 0,
+        specialInstruction: orderData.specialInstruction || "",
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Pathao order creation error:", error);
+      res.status(500).json({ message: "Failed to create Pathao order", error: error.message });
+    }
+  });
+
+  // Track Pathao order
+  app.get("/api/pathao/track/:consignmentId", async (req: Request, res: Response) => {
+    try {
+      const { consignmentId } = req.params;
+
+      if (!consignmentId) {
+        return res.status(400).json({ message: "Consignment ID is required" });
+      }
+
+      const { getPathaoService } = await import("./pathao.js");
+      const pathao = getPathaoService();
+      const tracking = await pathao.trackOrder(consignmentId);
+
+      res.json(tracking);
+    } catch (error: any) {
+      console.error("Pathao tracking error:", error);
+      res.status(500).json({ message: "Failed to track order", error: error.message });
+    }
+  });
+
+  // =================== END PATHAO ROUTES ===================
 
   // Contact form
   app.post("/api/contact", async (req: Request, res: Response) => {

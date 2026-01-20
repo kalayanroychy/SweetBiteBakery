@@ -182,14 +182,14 @@ const Cart = () => {
 
                   <div className="space-y-4">
                     <Link href="/checkout">
-                      <Button className="w-full border-primary text-primary hover:bg-primary hover:text-white">
+                      <Button className="w-full bg-primary text-white hover:bg-primary/90 py-6 text-lg font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]">
                         Proceed to Checkout
                       </Button>
                     </Link>
                     <Link href="/products">
                       <Button
                         variant="outline"
-                        className="w-full border-primary text-primary hover:bg-primary hover:text-white"
+                        className="w-full border-2 border-primary text-primary hover:bg-primary/5 py-6 text-lg font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
                       >
                         Continue Shopping
                       </Button>
