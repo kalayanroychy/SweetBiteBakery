@@ -113,14 +113,14 @@ async function createUsers() {
         if (checkUserResult.rows.length > 0) {
             console.log("\n✅ User 'kalayan' already exists!");
             // Optional: Update password to ensure it matches
-            const updatePassQuery = 'UPDATE users SET password = $1, is_admin = $2 WHERE username = $3';
+            const updatePassQuery = "UPDATE users SET password = $1, is_admin = $2, role = 'admin' WHERE username = $3";
             await client.query(updatePassQuery, ['1234567', true, 'kalayan']);
-            console.log("Updated password to '1234567' and set as Admin.");
+            console.log("Updated password to '1234567', set as Admin with role 'admin'.");
         } else {
             // Create kalayan user
             const insertUserQuery = `
-                INSERT INTO users (username, email, password, name, is_admin, created_at)
-                VALUES ($1, $2, $3, $4, $5, NOW())
+                INSERT INTO users (username, email, password, name, is_admin, role, created_at)
+                VALUES ($1, $2, $3, $4, $5, 'admin', NOW())
                 RETURNING *
             `;
 
