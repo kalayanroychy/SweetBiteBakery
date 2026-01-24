@@ -143,8 +143,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await getDb().select().from(users).where(eq(users.username, username));
-    return user;
+    try {
+      const [user] = await getDb().select().from(users).where(eq(users.username, username));
+      return user;
+    } catch (error) {
+      console.error(`Database Error in getUserByUsername for ${username}:`, error);
+      throw error; // Re-throw so auth.ts catches it
+    }
   }
 
   async getUserByUsernameOrEmail(username: string, email: string): Promise<User | undefined> {

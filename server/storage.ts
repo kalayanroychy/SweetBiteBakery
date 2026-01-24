@@ -197,8 +197,6 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    console.log('Trying to find user by username:', username);
-    console.log('Users in storage:', Array.from(this.users.values()));
     return Array.from(this.users.values()).find(
       user => user.username === username
     );
