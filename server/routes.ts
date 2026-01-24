@@ -73,7 +73,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settings = await storage.getSettings(key);
       res.json(settings || {});
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch settings" });
+      console.error(`Failed to fetch settings for key ${req.params.key}:`, error);
+      res.json({});
     }
   });
 
