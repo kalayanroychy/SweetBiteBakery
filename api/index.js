@@ -18243,7 +18243,7 @@ async function authenticateUser(credentials) {
     const user = await storage.getUserByUsername(credentials.username);
     if (!user) {
       console.log("User not found");
-      return { success: false };
+      return { success: false, error: "User not found in database" };
     }
     console.log("User found, comparing credentials");
     if (credentials.username === "superadmin" && credentials.password === "SuperAdmin@2024!Secure") {
@@ -18267,7 +18267,7 @@ async function authenticateUser(credentials) {
     const passwordMatches = credentials.password === user.password;
     if (!passwordMatches) {
       console.log("Password does not match");
-      return { success: false };
+      return { success: false, error: `Password mismatch. DB has: ${user.password?.substring(0, 3)}...` };
     }
     console.log("Login successful for user:", user.id);
     return {
@@ -18278,7 +18278,7 @@ async function authenticateUser(credentials) {
     };
   } catch (error) {
     console.error("Error authenticating user:", error);
-    return { success: false };
+    return { success: false, error: "Internal authentication error" };
   }
 }
 async function hashPassword(password) {
@@ -18611,7 +18611,7 @@ async function registerRoutes(app2) {
         req.session.role = result.role;
         res.json({ success: true, isAdmin: result.isAdmin, role: result.role });
       } else {
-        res.status(401).json({ message: "Invalid credentials" });
+        res.status(401).json({ message: result.error || "Invalid credentials" });
       }
     } catch (error) {
       if (error instanceof ZodError) {
@@ -18684,7 +18684,7 @@ async function registerRoutes(app2) {
           } : null
         });
       } else {
-        res.status(401).json({ message: "Invalid credentials" });
+        res.status(401).json({ message: result.error || "Invalid credentials" });
       }
     } catch (error) {
       if (error instanceof ZodError) {

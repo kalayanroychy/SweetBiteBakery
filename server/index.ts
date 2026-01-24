@@ -8,8 +8,8 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
-// Trust Nginx proxy for secure cookies
-app.set('trust proxy', 1);
+// Trust all proxies (Cloudflare -> Nginx -> Express)
+app.set('trust proxy', true);
 
 // Initialize session store
 import connectPg from "connect-pg-simple";
