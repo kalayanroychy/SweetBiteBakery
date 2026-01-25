@@ -42,7 +42,7 @@ export default function AdminInventory() {
 
     const updateStockMutation = useMutation({
         mutationFn: async ({ id, stock }: { id: number; stock: number }) => {
-            const res = await apiRequest("PATCH", `/api/products/${id}`, { stock });
+            const res = await apiRequest("PUT", `/api/admin/products/${id}`, { stock });
             return res.json();
         },
         onSuccess: () => {
