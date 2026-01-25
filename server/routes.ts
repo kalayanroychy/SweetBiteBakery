@@ -151,6 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         offset
       });
     } catch (error) {
+      console.error("Products API Error:", error);
       res.status(500).json({ message: "Failed to fetch products" });
     }
   });
@@ -228,6 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         category: category || { id: 0, name: "Unknown", slug: "unknown" }
       });
     } catch (error) {
+      console.error("Product by Slug API Error:", error); // Added logging
       res.status(500).json({ message: "Failed to fetch product" });
     }
   });
