@@ -24,9 +24,9 @@ function initializeDatabase() {
   // Create connection pool with better retry and timeout settings
   pool = new Pool({
     connectionString: DATABASE_URL,
-    max: 4, // Reduce for VPS
+    max: 10, // Moderate pool size for stability
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 30000, // Increased timeout
     // Add Keep-Alive settings to prevent connection drops
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,

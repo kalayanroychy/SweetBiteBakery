@@ -47,6 +47,8 @@ export interface IStorage {
   // Order Item operations
   getOrderItems(orderId: number): Promise<OrderItem[]>;
   createOrderItem(orderItem: InsertOrderItem): Promise<OrderItem>;
+  createOrderItems(orderItems: InsertOrderItem[]): Promise<OrderItem[]>;
+  processOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
 
   // Settings operations
   getSettings(key: string): Promise<any>;
@@ -245,7 +247,7 @@ export class MemStorage implements IStorage {
   async createOrder(order: InsertOrder): Promise<Order> {
     const id = this.orderId++;
     const now = new Date();
-    const newOrder = { ...order, id, status: 'pending', createdAt: now } as Order;
+    const newOrder = { ...order, id, status: order.status || 'pending', createdAt: now } as Order;
     this.orders.set(id, newOrder);
     return newOrder;
   }
@@ -271,6 +273,39 @@ export class MemStorage implements IStorage {
     const newOrderItem: OrderItem = { ...orderItem, id };
     this.orderItems.set(id, newOrderItem);
     return newOrderItem;
+  }
+
+  async createOrderItems(items: InsertOrderItem[]): Promise<OrderItem[]> {
+    return Promise.all(items.map(item => this.createOrderItem(item)));
+  }
+
+  async processOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
+    // Check stock for all items first
+    for (const item of items) {
+      const product = this.products.get(item.productId);
+      if (!product) {
+        throw new Error(`Product ${item.productId} not found`);
+      }
+      if (product.stock < item.quantity) {
+        throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
+      }
+    }
+
+    // Deduct stock
+    for (const item of items) {
+      const product = this.products.get(item.productId)!;
+      const updatedProduct = { ...product, stock: product.stock - item.quantity };
+      this.products.set(product.id, updatedProduct);
+    }
+
+    // Create order and items
+    const newOrder = await this.createOrder(order);
+
+    // Assign orderId to items
+    const itemsWithOrderId = items.map(item => ({ ...item, orderId: newOrder.id }));
+    await this.createOrderItems(itemsWithOrderId);
+
+    return newOrder;
   }
 
   // Settings methods
@@ -316,7 +351,7 @@ function getStorageInstance(): IStorage {
       ? new DatabaseStorage()
       : new MemStorage();
   }
-  return storageInstance;
+  return storageInstance!;
 }
 
 // Create a Proxy to make storage access lazy

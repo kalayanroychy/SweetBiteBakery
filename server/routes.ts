@@ -643,12 +643,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Dashboard statistics
   app.get("/api/admin/dashboard", checkAuth, async (req: Request, res: Response) => {
     try {
-      // Fetch all necessary data in parallel for better performance
-      const [products, categories, orders] = await Promise.all([
-        storage.getProducts(),
-        storage.getCategories(),
-        storage.getOrders()
-      ]);
+      // Fetch all necessary data sequentially to prevent connection pool exhaustion
+      const products = await storage.getProducts();
+      const categories = await storage.getCategories();
+      const orders = await storage.getOrders();
 
       // Calculate total revenue
       const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0);
@@ -708,25 +706,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin: Get all orders (for admin panel)
+  // Admin: Get all orders (for admin panel)
   app.get("/api/admin/orders", checkAuth, async (req: Request, res: Response) => {
     try {
-      const orders = await storage.getOrders();
+      const [orders, products] = await Promise.all([
+        storage.getOrders(),
+        storage.getProducts() // Fetch all products once
+      ]);
+
+      // Create product lookup map for O(1) access
+      const productMap = new Map(products.map(p => [p.id, p]));
 
       // Fetch order items for each order and include product names
+      // We still map over orders to get items, but we avoid the inner product fetch loop
       const ordersWithItems = await Promise.all(
         orders.map(async (order) => {
           const items = await storage.getOrderItems(order.id);
 
-          // Get product details for each item
-          const itemsWithProductNames = await Promise.all(
-            items.map(async (item) => {
-              const product = await storage.getProductById(item.productId);
-              return {
-                ...item,
-                productName: product?.name || `Product #${item.productId}`
-              };
-            })
-          );
+          // Get product details for each item from map
+          const itemsWithProductNames = items.map((item) => {
+            const product = productMap.get(item.productId);
+            return {
+              ...item,
+              productName: product?.name || `Product #${item.productId}`
+            };
+          });
 
           return {
             ...order,
@@ -739,6 +743,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to fetch orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Admin: Create new order (POS)
+  app.post("/api/admin/orders/create", checkAuth, async (req: Request, res: Response) => {
+    try {
+      const { items, status, ...orderData } = req.body;
+
+      // Validate order data (excluding items and status which are handled separately)
+      const validOrderData = insertOrderSchema.parse(orderData);
+
+      // Create order with status
+      // Create order items data first
+      let orderItemsData: any[] = [];
+      if (items && Array.isArray(items) && items.length > 0) {
+        orderItemsData = items.map(item => ({
+          orderId: 0, // Temporary
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          subtotal: item.price * item.quantity
+        }));
+      }
+
+      // Use processOrder to handle transaction and stock deduction
+      const order = await storage.processOrder({
+        ...validOrderData,
+        status: status || 'delivered'
+      }, orderItemsData);
+
+      // Return complete order with items and product names
+      const orderItems = await storage.getOrderItems(order.id);
+
+      const itemsWithNames = await Promise.all(orderItems.map(async (item) => {
+        const product = await storage.getProductById(item.productId);
+        return {
+          ...item,
+          name: product?.name || `Product #${item.productId}`
+        };
+      }));
+
+      res.status(201).json({
+        ...order,
+        items: itemsWithNames
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: "Invalid input", errors: error.errors });
+      } else {
+        console.error("Failed to create admin order:", error);
+        // Check if it's a stock error or other known error
+        const message = error instanceof Error ? error.message : "Failed to create order";
+        res.status(500).json({ message });
+      }
     }
   });
 
@@ -906,27 +964,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Create the order
-      const order = await storage.createOrder(orderWithUser);
-
-      // Create order items
+      // Create the order with stock deduction using processOrder
       const items = req.body.items || [];
-      for (const item of items) {
-        const orderItemData = insertOrderItemSchema.parse({
-          orderId: order.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          subtotal: item.price * item.quantity
-        });
-        await storage.createOrderItem(orderItemData);
-      }
+      const orderItemsData = items.map((item: any) => insertOrderItemSchema.parse({
+        orderId: 0, // Temporary ID, will be set by processOrder
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+        subtotal: item.price * item.quantity
+      }));
+
+      const order = await storage.processOrder(orderWithUser, orderItemsData);
 
       res.status(201).json({ order });
     } catch (error) {
       if (error instanceof ZodError) {
         res.status(400).json({ message: "Invalid input", errors: error.errors });
       } else {
-        res.status(500).json({ message: "Failed to create order" });
+        // Check if it's a stock error or other known error
+        const message = error instanceof Error ? error.message : "Failed to create order";
+        res.status(500).json({ message });
       }
     }
   });

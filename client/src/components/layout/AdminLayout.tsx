@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
-  LayoutDashboard, Package, ShoppingCart,
+  LayoutDashboard, Package, ShoppingCart, Calculator,
   Users, Settings, LogOut, Menu, X, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Products', href: '/admin/products', icon: Package },
+    { name: 'POS', href: '/admin/pos', icon: Calculator },
+    { name: 'Inventory', href: '/admin/inventory', icon: Package },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Customers', href: '/admin/customers', icon: Users },
     { name: 'Users', href: '/admin/users', icon: Users },
@@ -63,8 +65,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     onClick={() => setSidebarOpen(false)}
                   >
                     <div className={`group flex items-center py-3 px-3 rounded-md text-sm ${location === item.href
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'text-gray-700 hover:bg-gray-100'
                       }`}>
                       <item.icon className={`mr-3 h-5 w-5 ${location === item.href ? 'text-primary' : 'text-gray-500'
                         }`} />
@@ -103,8 +105,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   >
                     <Link href={item.href}>
                       <div className={`group flex items-center py-3 px-3 rounded-md text-sm ${location === item.href
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'text-gray-700 hover:bg-gray-100'
                         }`}>
                         <item.icon className={`mr-3 h-5 w-5 ${location === item.href ? 'text-primary' : 'text-gray-500'
                           }`} />

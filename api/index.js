@@ -3220,9 +3220,9 @@ var init_delete = __esm({
     init_tracing();
     init_utils();
     PgDeleteBase = class extends QueryPromise {
-      constructor(table, session2, dialect, withList) {
+      constructor(table, session3, dialect, withList) {
         super();
-        this.session = session2;
+        this.session = session3;
         this.dialect = dialect;
         this.config = { table, withList };
       }
@@ -4051,7 +4051,7 @@ var init_dialect = __esm({
       constructor(config) {
         this.casing = new CasingCache(config?.casing);
       }
-      async migrate(migrations, session2, config) {
+      async migrate(migrations, session3, config) {
         const migrationsTable = typeof config === "string" ? "__drizzle_migrations" : config.migrationsTable ?? "__drizzle_migrations";
         const migrationsSchema = typeof config === "string" ? "drizzle" : config.migrationsSchema ?? "drizzle";
         const migrationTableCreate = sql`
@@ -4061,13 +4061,13 @@ var init_dialect = __esm({
 				created_at bigint
 			)
 		`;
-        await session2.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sql.identifier(migrationsSchema)}`);
-        await session2.execute(migrationTableCreate);
-        const dbMigrations = await session2.all(
+        await session3.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sql.identifier(migrationsSchema)}`);
+        await session3.execute(migrationTableCreate);
+        const dbMigrations = await session3.all(
           sql`select id, hash, created_at from ${sql.identifier(migrationsSchema)}.${sql.identifier(migrationsTable)} order by created_at desc limit 1`
         );
         const lastDbMigration = dbMigrations[0];
-        await session2.transaction(async (tx) => {
+        await session3.transaction(async (tx) => {
           for await (const migration of migrations) {
             if (!lastDbMigration || Number(lastDbMigration.created_at) < migration.folderMillis) {
               for (const stmt of migration.sql) {
@@ -5252,7 +5252,7 @@ var init_select2 = __esm({
       isPartialSelect;
       session;
       dialect;
-      constructor({ table, fields, isPartialSelect, session: session2, dialect, withList, distinct }) {
+      constructor({ table, fields, isPartialSelect, session: session3, dialect, withList, distinct }) {
         super();
         this.config = {
           withList,
@@ -5262,7 +5262,7 @@ var init_select2 = __esm({
           setOperators: []
         };
         this.isPartialSelect = isPartialSelect;
-        this.session = session2;
+        this.session = session3;
         this.dialect = dialect;
         this._ = {
           selectedFields: fields
@@ -5848,13 +5848,13 @@ var init_select2 = __esm({
       static [entityKind] = "PgSelect";
       /** @internal */
       _prepare(name) {
-        const { session: session2, config, dialect, joinsNotNullableMap, authToken } = this;
-        if (!session2) {
+        const { session: session3, config, dialect, joinsNotNullableMap, authToken } = this;
+        if (!session3) {
           throw new Error("Cannot execute a query on a query builder. Please use a database instance instead.");
         }
         return tracer.startActiveSpan("drizzle.prepareQuery", () => {
           const fieldsList = orderSelectedFields(config.fields);
-          const query = session2.prepareQuery(dialect.sqlToQuery(this.getSQL()), fieldsList, name, true);
+          const query = session3.prepareQuery(dialect.sqlToQuery(this.getSQL()), fieldsList, name, true);
           query.joinsNotNullableMap = joinsNotNullableMap;
           return query.setToken(authToken);
         });
@@ -6009,9 +6009,9 @@ var init_insert = __esm({
     init_utils();
     init_query_builder2();
     PgInsertBuilder = class {
-      constructor(table, session2, dialect, withList, overridingSystemValue_) {
+      constructor(table, session3, dialect, withList, overridingSystemValue_) {
         this.table = table;
-        this.session = session2;
+        this.session = session3;
         this.dialect = dialect;
         this.withList = withList;
         this.overridingSystemValue_ = overridingSystemValue_;
@@ -6062,9 +6062,9 @@ var init_insert = __esm({
       }
     };
     PgInsertBase = class extends QueryPromise {
-      constructor(table, values, session2, dialect, withList, select, overridingSystemValue_) {
+      constructor(table, values, session3, dialect, withList, select, overridingSystemValue_) {
         super();
-        this.session = session2;
+        this.session = session3;
         this.dialect = dialect;
         this.config = { table, values, withList, select, overridingSystemValue_ };
       }
@@ -6206,9 +6206,9 @@ var init_refresh_materialized_view = __esm({
     init_query_promise();
     init_tracing();
     PgRefreshMaterializedView = class extends QueryPromise {
-      constructor(view, session2, dialect) {
+      constructor(view, session3, dialect) {
         super();
-        this.session = session2;
+        this.session = session3;
         this.dialect = dialect;
         this.config = { view };
       }
@@ -6280,9 +6280,9 @@ var init_update = __esm({
     init_utils();
     init_view_common();
     PgUpdateBuilder = class {
-      constructor(table, session2, dialect, withList) {
+      constructor(table, session3, dialect, withList) {
         this.table = table;
-        this.session = session2;
+        this.session = session3;
         this.dialect = dialect;
         this.withList = withList;
       }
@@ -6303,9 +6303,9 @@ var init_update = __esm({
       }
     };
     PgUpdateBase = class extends QueryPromise {
-      constructor(table, set, session2, dialect, withList) {
+      constructor(table, set, session3, dialect, withList) {
         super();
-        this.session = session2;
+        this.session = session3;
         this.dialect = dialect;
         this.config = { set, table, withList, joins: [] };
         this.tableName = getTableLikeName(table);
@@ -6568,14 +6568,14 @@ var init_query = __esm({
     init_relations();
     init_tracing();
     RelationalQueryBuilder = class {
-      constructor(fullSchema, schema, tableNamesMap, table, tableConfig, dialect, session2) {
+      constructor(fullSchema, schema, tableNamesMap, table, tableConfig, dialect, session3) {
         this.fullSchema = fullSchema;
         this.schema = schema;
         this.tableNamesMap = tableNamesMap;
         this.table = table;
         this.tableConfig = tableConfig;
         this.dialect = dialect;
-        this.session = session2;
+        this.session = session3;
       }
       static [entityKind] = "PgRelationalQueryBuilder";
       findMany(config) {
@@ -6606,7 +6606,7 @@ var init_query = __esm({
       }
     };
     PgRelationalQuery = class extends QueryPromise {
-      constructor(fullSchema, schema, tableNamesMap, table, tableConfig, dialect, session2, config, mode) {
+      constructor(fullSchema, schema, tableNamesMap, table, tableConfig, dialect, session3, config, mode) {
         super();
         this.fullSchema = fullSchema;
         this.schema = schema;
@@ -6614,7 +6614,7 @@ var init_query = __esm({
         this.table = table;
         this.tableConfig = tableConfig;
         this.dialect = dialect;
-        this.session = session2;
+        this.session = session3;
         this.config = config;
         this.mode = mode;
       }
@@ -6731,19 +6731,19 @@ var init_db = __esm({
     init_raw();
     init_refresh_materialized_view();
     PgDatabase = class {
-      constructor(dialect, session2, schema) {
+      constructor(dialect, session3, schema) {
         this.dialect = dialect;
-        this.session = session2;
+        this.session = session3;
         this._ = schema ? {
           schema: schema.schema,
           fullSchema: schema.fullSchema,
           tableNamesMap: schema.tableNamesMap,
-          session: session2
+          session: session3
         } : {
           schema: void 0,
           fullSchema: {},
           tableNamesMap: {},
-          session: session2
+          session: session3
         };
         this.query = {};
         if (this._.schema) {
@@ -6755,7 +6755,7 @@ var init_db = __esm({
               schema.fullSchema[tableName],
               columns,
               dialect,
-              session2
+              session3
             );
           }
         }
@@ -7565,8 +7565,8 @@ var init_session = __esm({
       }
     };
     PgTransaction = class extends PgDatabase {
-      constructor(dialect, session2, schema, nestedIndex = 0) {
-        super(dialect, session2, schema);
+      constructor(dialect, session3, schema, nestedIndex = 0) {
+        super(dialect, session3, schema);
         this.schema = schema;
         this.nestedIndex = nestedIndex;
       }
@@ -12038,10 +12038,11 @@ __export(schema_exports, {
   orders: () => orders,
   products: () => products,
   registerSchema: () => registerSchema,
+  session: () => session,
   settings: () => settings,
   users: () => users
 });
-var categories, insertCategorySchema, products, insertProductSchema, users, insertUserSchema, orders, insertOrderSchema, orderItems, insertOrderItemSchema, settings, insertSettingsSchema, cartSchema, loginSchema, registerSchema, newsletterSchema, contactFormSchema;
+var categories, insertCategorySchema, products, insertProductSchema, users, insertUserSchema, orders, insertOrderSchema, orderItems, insertOrderItemSchema, settings, insertSettingsSchema, cartSchema, loginSchema, registerSchema, newsletterSchema, contactFormSchema, session;
 var init_schema2 = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -12081,6 +12082,8 @@ var init_schema2 = __esm({
       colors: text("colors").array().default([]),
       priceVariations: jsonb("price_variations").default({}),
       // { "size-color": price }
+      stock: integer("stock").notNull().default(0),
+      lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
       createdAt: timestamp("created_at").defaultNow()
     });
     insertProductSchema = createInsertSchema(products).pick({
@@ -12098,7 +12101,9 @@ var init_schema2 = __esm({
       dietaryOptions: true,
       sizes: true,
       colors: true,
-      priceVariations: true
+      priceVariations: true,
+      stock: true,
+      lowStockThreshold: true
     });
     users = pgTable("users", {
       id: serial("id").primaryKey(),
@@ -12144,6 +12149,7 @@ var init_schema2 = __esm({
       state: true,
       zipCode: true,
       total: true,
+      status: true,
       paymentMethod: true
     });
     orderItems = pgTable("order_items", {
@@ -12205,6 +12211,11 @@ var init_schema2 = __esm({
       email: z.string().email("Please enter a valid email address"),
       subject: z.string().min(2, "Please select a subject"),
       message: z.string().min(10, "Message must be at least 10 characters")
+    });
+    session = pgTable("session", {
+      sid: text("sid").primaryKey(),
+      sess: jsonb("sess").notNull(),
+      expire: timestamp("expire", { precision: 6 }).notNull()
     });
   }
 });
@@ -13606,8 +13617,8 @@ var require_sasl = __commonJS({
         message: "SASLInitialResponse"
       };
     }
-    async function continueSession(session2, password, serverData, stream) {
-      if (session2.message !== "SASLInitialResponse") {
+    async function continueSession(session3, password, serverData, stream) {
+      if (session3.message !== "SASLInitialResponse") {
         throw new Error("SASL: Last message was not SASLInitialResponse");
       }
       if (typeof password !== "string") {
@@ -13620,15 +13631,15 @@ var require_sasl = __commonJS({
         throw new Error("SASL: SCRAM-SERVER-FIRST-MESSAGE: serverData must be a string");
       }
       const sv = parseServerFirstMessage(serverData);
-      if (!sv.nonce.startsWith(session2.clientNonce)) {
+      if (!sv.nonce.startsWith(session3.clientNonce)) {
         throw new Error("SASL: SCRAM-SERVER-FIRST-MESSAGE: server nonce does not start with client nonce");
-      } else if (sv.nonce.length === session2.clientNonce.length) {
+      } else if (sv.nonce.length === session3.clientNonce.length) {
         throw new Error("SASL: SCRAM-SERVER-FIRST-MESSAGE: server nonce is too short");
       }
-      const clientFirstMessageBare = "n=*,r=" + session2.clientNonce;
+      const clientFirstMessageBare = "n=*,r=" + session3.clientNonce;
       const serverFirstMessage = "r=" + sv.nonce + ",s=" + sv.salt + ",i=" + sv.iteration;
       let channelBinding = stream ? "eSws" : "biws";
-      if (session2.mechanism === "SCRAM-SHA-256-PLUS") {
+      if (session3.mechanism === "SCRAM-SHA-256-PLUS") {
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
@@ -13646,19 +13657,19 @@ var require_sasl = __commonJS({
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
       const serverKey = await crypto.hmacSha256(saltedPassword, "Server Key");
       const serverSignatureBytes = await crypto.hmacSha256(serverKey, authMessage);
-      session2.message = "SASLResponse";
-      session2.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
-      session2.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
+      session3.message = "SASLResponse";
+      session3.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
+      session3.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
     }
-    function finalizeSession(session2, serverData) {
-      if (session2.message !== "SASLResponse") {
+    function finalizeSession(session3, serverData) {
+      if (session3.message !== "SASLResponse") {
         throw new Error("SASL: Last message was not SASLResponse");
       }
       if (typeof serverData !== "string") {
         throw new Error("SASL: SCRAM-SERVER-FINAL-MESSAGE: serverData must be a string");
       }
       const { serverSignature } = parseServerFinalMessage(serverData);
-      if (serverSignature !== session2.serverSignature) {
+      if (serverSignature !== session3.serverSignature) {
         throw new Error("SASL: SCRAM-SERVER-FINAL-MESSAGE: server signature does not match");
       }
     }
@@ -17382,8 +17393,8 @@ var init_session2 = __esm({
         );
       }
       async transaction(transaction, config) {
-        const session2 = this.client instanceof Pool2 ? new _NodePgSession(await this.client.connect(), this.dialect, this.schema, this.options) : this;
-        const tx = new NodePgTransaction(this.dialect, session2, this.schema);
+        const session3 = this.client instanceof Pool2 ? new _NodePgSession(await this.client.connect(), this.dialect, this.schema, this.options) : this;
+        const tx = new NodePgTransaction(this.dialect, session3, this.schema);
         await tx.execute(sql`begin${config ? sql` ${tx.getTransactionConfigSQL(config)}` : void 0}`);
         try {
           const result = await transaction(tx);
@@ -17394,7 +17405,7 @@ var init_session2 = __esm({
           throw error;
         } finally {
           if (this.client instanceof Pool2) {
-            session2.client.release();
+            session3.client.release();
           }
         }
       }
@@ -17451,8 +17462,8 @@ function construct(client, config = {}) {
     };
   }
   const driver = new NodePgDriver(client, dialect, { logger });
-  const session2 = driver.createSession(schema);
-  const db2 = new NodePgDatabase(dialect, session2, schema);
+  const session3 = driver.createSession(schema);
+  const db2 = new NodePgDatabase(dialect, session3, schema);
   db2.$client = client;
   return db2;
 }
@@ -17536,8 +17547,13 @@ function initializeDatabase() {
   pool = new Pool({
     connectionString: DATABASE_URL,
     max: 10,
+    // Moderate pool size for stability
     idleTimeoutMillis: 3e4,
-    connectionTimeoutMillis: 1e4,
+    connectionTimeoutMillis: 3e4,
+    // Increased timeout
+    // Add Keep-Alive settings to prevent connection drops
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 1e4,
     // For local PostgreSQL, disable SSL
     ssl: DATABASE_URL.includes("localhost") || DATABASE_URL.includes("127.0.0.1") ? false : { rejectUnauthorized: false }
   });
@@ -17912,8 +17928,13 @@ var DatabaseStorage = class {
     return user;
   }
   async getUserByUsername(username) {
-    const [user] = await getDb2().select().from(users).where(eq(users.username, username));
-    return user;
+    try {
+      const [user] = await getDb2().select().from(users).where(eq(users.username, username));
+      return user;
+    } catch (error) {
+      console.error(`Database Error in getUserByUsername for ${username}:`, error);
+      throw error;
+    }
   }
   async getUserByUsernameOrEmail(username, email) {
     const [user] = await getDb2().select().from(users).where(
@@ -17955,7 +17976,7 @@ var DatabaseStorage = class {
   async createOrder(order) {
     const orderWithStatus = {
       ...order,
-      status: "pending"
+      status: order.status || "pending"
     };
     const [newOrder] = await getDb2().insert(orders).values(orderWithStatus).returning();
     return newOrder;
@@ -17972,6 +17993,10 @@ var DatabaseStorage = class {
     const [newOrderItem] = await getDb2().insert(orderItems).values(orderItem).returning();
     return newOrderItem;
   }
+  async createOrderItems(items) {
+    if (items.length === 0) return [];
+    return await getDb2().insert(orderItems).values(items).returning();
+  }
   // Settings operations
   async getSettings(key) {
     const [setting] = await getDb2().select().from(settings).where(eq(settings.key, key));
@@ -17986,6 +18011,35 @@ var DatabaseStorage = class {
       const [newSetting] = await getDb2().insert(settings).values({ key, value }).returning();
       return newSetting;
     }
+  }
+  async processOrder(order, items) {
+    return await getDb2().transaction(async (tx) => {
+      for (const item of items) {
+        const [product] = await tx.select().from(products).where(eq(products.id, item.productId));
+        if (!product) {
+          throw new Error(`Product ${item.productId} not found`);
+        }
+        if (product.stock < item.quantity) {
+          throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
+        }
+      }
+      for (const item of items) {
+        await tx.update(products).set({ stock: sql`${products.stock} - ${item.quantity}` }).where(eq(products.id, item.productId));
+      }
+      const orderWithStatus = {
+        ...order,
+        status: order.status || "pending"
+      };
+      const [newOrder] = await tx.insert(orders).values(orderWithStatus).returning();
+      if (items.length > 0) {
+        const itemsWithOrderId = items.map((item) => ({
+          ...item,
+          orderId: newOrder.id
+        }));
+        await tx.insert(orderItems).values(itemsWithOrderId);
+      }
+      return newOrder;
+    });
   }
 };
 
@@ -18111,8 +18165,6 @@ var MemStorage = class {
     return this.users.get(id);
   }
   async getUserByUsername(username) {
-    console.log("Trying to find user by username:", username);
-    console.log("Users in storage:", Array.from(this.users.values()));
     return Array.from(this.users.values()).find(
       (user) => user.username === username
     );
@@ -18152,7 +18204,7 @@ var MemStorage = class {
   async createOrder(order) {
     const id = this.orderId++;
     const now = /* @__PURE__ */ new Date();
-    const newOrder = { ...order, id, status: "pending", createdAt: now };
+    const newOrder = { ...order, id, status: order.status || "pending", createdAt: now };
     this.orders.set(id, newOrder);
     return newOrder;
   }
@@ -18174,6 +18226,29 @@ var MemStorage = class {
     const newOrderItem = { ...orderItem, id };
     this.orderItems.set(id, newOrderItem);
     return newOrderItem;
+  }
+  async createOrderItems(items) {
+    return Promise.all(items.map((item) => this.createOrderItem(item)));
+  }
+  async processOrder(order, items) {
+    for (const item of items) {
+      const product = this.products.get(item.productId);
+      if (!product) {
+        throw new Error(`Product ${item.productId} not found`);
+      }
+      if (product.stock < item.quantity) {
+        throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
+      }
+    }
+    for (const item of items) {
+      const product = this.products.get(item.productId);
+      const updatedProduct = { ...product, stock: product.stock - item.quantity };
+      this.products.set(product.id, updatedProduct);
+    }
+    const newOrder = await this.createOrder(order);
+    const itemsWithOrderId = items.map((item) => ({ ...item, orderId: newOrder.id }));
+    await this.createOrderItems(itemsWithOrderId);
+    return newOrder;
   }
   // Settings methods
   async getSettings(key) {
@@ -18472,7 +18547,8 @@ async function registerRoutes(app2) {
       const settings2 = await storage.getSettings(key);
       res.json(settings2 || {});
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch settings" });
+      console.error(`Failed to fetch settings for key ${req.params.key}:`, error);
+      res.json({});
     }
   });
   app2.get("/api/admin/settings/:key", checkAuth, async (req, res) => {
@@ -18935,11 +19011,9 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/admin/dashboard", checkAuth, async (req, res) => {
     try {
-      const [products2, categories2, orders2] = await Promise.all([
-        storage.getProducts(),
-        storage.getCategories(),
-        storage.getOrders()
-      ]);
+      const products2 = await storage.getProducts();
+      const categories2 = await storage.getCategories();
+      const orders2 = await storage.getOrders();
       const totalRevenue = orders2.reduce((sum, order) => sum + (order.total || 0), 0);
       const recentOrders = orders2.sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -18986,19 +19060,22 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/admin/orders", checkAuth, async (req, res) => {
     try {
-      const orders2 = await storage.getOrders();
+      const [orders2, products2] = await Promise.all([
+        storage.getOrders(),
+        storage.getProducts()
+        // Fetch all products once
+      ]);
+      const productMap = new Map(products2.map((p) => [p.id, p]));
       const ordersWithItems = await Promise.all(
         orders2.map(async (order) => {
           const items = await storage.getOrderItems(order.id);
-          const itemsWithProductNames = await Promise.all(
-            items.map(async (item) => {
-              const product = await storage.getProductById(item.productId);
-              return {
-                ...item,
-                productName: product?.name || `Product #${item.productId}`
-              };
-            })
-          );
+          const itemsWithProductNames = items.map((item) => {
+            const product = productMap.get(item.productId);
+            return {
+              ...item,
+              productName: product?.name || `Product #${item.productId}`
+            };
+          });
           return {
             ...order,
             items: itemsWithProductNames
@@ -19009,6 +19086,47 @@ async function registerRoutes(app2) {
     } catch (error) {
       console.error("Failed to fetch orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+  app2.post("/api/admin/orders/create", checkAuth, async (req, res) => {
+    try {
+      const { items, status, ...orderData } = req.body;
+      const validOrderData = insertOrderSchema.parse(orderData);
+      let orderItemsData = [];
+      if (items && Array.isArray(items) && items.length > 0) {
+        orderItemsData = items.map((item) => ({
+          orderId: 0,
+          // Temporary
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          subtotal: item.price * item.quantity
+        }));
+      }
+      const order = await storage.processOrder({
+        ...validOrderData,
+        status: status || "delivered"
+      }, orderItemsData);
+      const orderItems2 = await storage.getOrderItems(order.id);
+      const itemsWithNames = await Promise.all(orderItems2.map(async (item) => {
+        const product = await storage.getProductById(item.productId);
+        return {
+          ...item,
+          name: product?.name || `Product #${item.productId}`
+        };
+      }));
+      res.status(201).json({
+        ...order,
+        items: itemsWithNames
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: "Invalid input", errors: error.errors });
+      } else {
+        console.error("Failed to create admin order:", error);
+        const message = error instanceof Error ? error.message : "Failed to create order";
+        res.status(500).json({ message });
+      }
     }
   });
   app2.patch("/api/admin/orders/:id/status", checkAuth, async (req, res) => {
@@ -19124,24 +19242,23 @@ async function registerRoutes(app2) {
         ...orderData,
         userId: req.session.userId || null
       };
-      const order = await storage.createOrder(orderWithUser);
       const items = req.body.items || [];
-      for (const item of items) {
-        const orderItemData = insertOrderItemSchema.parse({
-          orderId: order.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          subtotal: item.price * item.quantity
-        });
-        await storage.createOrderItem(orderItemData);
-      }
+      const orderItemsData = items.map((item) => insertOrderItemSchema.parse({
+        orderId: 0,
+        // Temporary ID, will be set by processOrder
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+        subtotal: item.price * item.quantity
+      }));
+      const order = await storage.processOrder(orderWithUser, orderItemsData);
       res.status(201).json({ order });
     } catch (error) {
       if (error instanceof ZodError) {
         res.status(400).json({ message: "Invalid input", errors: error.errors });
       } else {
-        res.status(500).json({ message: "Failed to create order" });
+        const message = error instanceof Error ? error.message : "Failed to create order";
+        res.status(500).json({ message });
       }
     }
   });
@@ -19331,11 +19448,11 @@ async function registerRoutes(app2) {
 }
 
 // api/_handler.ts
-import session from "express-session";
+import session2 from "express-session";
 var app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(session({
+app.use(session2({
   secret: process.env.SESSION_SECRET || "sweetbite-bakery-secret",
   resave: false,
   saveUninitialized: false,

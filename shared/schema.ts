@@ -37,6 +37,8 @@ export const products = pgTable("products", {
   sizes: text("sizes").array().default([]),
   colors: text("colors").array().default([]),
   priceVariations: jsonb("price_variations").default({}), // { "size-color": price }
+  stock: integer("stock").notNull().default(0),
+  lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -56,6 +58,8 @@ export const insertProductSchema = createInsertSchema(products).pick({
   sizes: true,
   colors: true,
   priceVariations: true,
+  stock: true,
+  lowStockThreshold: true,
 });
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
@@ -112,6 +116,7 @@ export const insertOrderSchema = createInsertSchema(orders).pick({
   state: true,
   zipCode: true,
   total: true,
+  status: true,
   paymentMethod: true,
 });
 
@@ -212,3 +217,10 @@ export type ContactForm = z.infer<typeof contactFormSchema>;
 export type ProductWithCategory = Product & {
   category: Category;
 };
+
+// Session schema (required for connect-pg-simple to coexist with Drizzle)
+export const session = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
+});

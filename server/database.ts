@@ -8,7 +8,7 @@ import {
   type Setting, settings
 } from "../shared/schema.js";
 import { getDb as getDbInstance } from "./db.js";
-import { eq, desc, and, asc } from "drizzle-orm";
+import { eq, desc, and, asc, sql } from "drizzle-orm";
 import { IStorage } from "./storage.js";
 
 // Helper function to ensure db is not null
@@ -207,7 +207,7 @@ export class DatabaseStorage implements IStorage {
     // Add status field with default value
     const orderWithStatus = {
       ...order,
-      status: 'pending'
+      status: order.status || 'pending'
     };
 
     const [newOrder] = await getDb().insert(orders).values(orderWithStatus).returning();
@@ -233,6 +233,11 @@ export class DatabaseStorage implements IStorage {
     return newOrderItem;
   }
 
+  async createOrderItems(items: InsertOrderItem[]): Promise<OrderItem[]> {
+    if (items.length === 0) return [];
+    return await getDb().insert(orderItems).values(items).returning();
+  }
+
   // Settings operations
   async getSettings(key: string): Promise<any> {
     const [setting] = await getDb().select().from(settings).where(eq(settings.key, key));
@@ -256,5 +261,53 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return newSetting;
     }
+  }
+
+  async processOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
+    return await getDb().transaction(async (tx) => {
+      // 1. Verify stock for all items
+      for (const item of items) {
+        const [product] = await tx
+          .select()
+          .from(products)
+          .where(eq(products.id, item.productId));
+
+        if (!product) {
+          throw new Error(`Product ${item.productId} not found`);
+        }
+
+        if (product.stock < item.quantity) {
+          throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
+        }
+      }
+
+      // 2. Deduct stock
+      for (const item of items) {
+        await tx
+          .update(products)
+          .set({ stock: sql`${products.stock} - ${item.quantity}` })
+          .where(eq(products.id, item.productId));
+      }
+
+      // 3. Create order
+      // Add status field with default value
+      const orderWithStatus = {
+        ...order,
+        status: order.status || 'pending'
+      };
+
+      const [newOrder] = await tx.insert(orders).values(orderWithStatus).returning();
+
+      // 4. Create order items
+      if (items.length > 0) {
+        const itemsWithOrderId = items.map(item => ({
+          ...item,
+          orderId: newOrder.id
+        }));
+        await tx.insert(orderItems).values(itemsWithOrderId);
+      }
+
+      return newOrder;
+    });
   }
 }

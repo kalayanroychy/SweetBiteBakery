@@ -23,6 +23,8 @@ import AdminOrders from "@/pages/AdminOrders";
 import AdminCustomers from "@/pages/AdminCustomers";
 import AdminUsers from "@/pages/AdminUsers";
 import AdminSettings from "@/pages/AdminSettings";
+import AdminPOS from "@/pages/AdminPOS";
+import AdminInventory from "@/pages/AdminInventory";
 import Register from "@/pages/Register";
 import Login from "@/pages/Login";
 import UserPanel from "@/pages/UserPanel";
@@ -57,7 +59,11 @@ function Router() {
       <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/admin/customers" component={AdminCustomers} />
       <Route path="/admin/users" component={AdminUsers} />
+      <Route path="/admin/customers" component={AdminCustomers} />
+      <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/settings" component={AdminSettings} />
+      <Route path="/admin/pos" component={AdminPOS} />
+      <Route path="/admin/inventory" component={AdminInventory} />
 
       {/* Fallback to 404 */}
       <Route component={NotFound} />
