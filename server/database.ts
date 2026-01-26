@@ -344,7 +344,14 @@ export class DatabaseStorage implements IStorage {
 
   // Purchase operations
   async getPurchases(): Promise<Purchase[]> {
-    return await getDb().select().from(purchases).orderBy(desc(purchases.createdAt));
+    try {
+      const result = await getDb().select().from(purchases).orderBy(desc(purchases.createdAt));
+      console.log(`getPurchases fetched ${result.length} records`);
+      return result;
+    } catch (e) {
+      console.error("getPurchases error:", e);
+      throw e;
+    }
   }
 
   async getPurchaseById(id: number): Promise<Purchase | undefined> {
@@ -357,7 +364,7 @@ export class DatabaseStorage implements IStorage {
     const purchaseWithDefaults = {
       ...purchase,
       status: purchase.status || 'pending',
-      date: new Date(purchase.date)
+      date: purchase.date ? new Date(purchase.date) : new Date()
     };
 
     const [newPurchase] = await getDb().insert(purchases).values(purchaseWithDefaults).returning();
@@ -383,7 +390,7 @@ export class DatabaseStorage implements IStorage {
       const purchaseWithDefaults = {
         ...purchase,
         status: purchase.status || 'pending',
-        date: new Date(purchase.date)
+        date: purchase.date ? new Date(purchase.date) : new Date()
       };
 
       const [newPurchase] = await tx.insert(purchases).values(purchaseWithDefaults).returning();
@@ -398,6 +405,67 @@ export class DatabaseStorage implements IStorage {
 
         // 3. Update stock if status is 'received'
         if (newPurchase.status === 'received') {
+          console.log(`Processing stock update for purchase ${newPurchase.id}, items: ${items.length}`);
+          for (const item of items) {
+            console.log(`Updating stock for product ${item.productId} by +${item.quantity}`);
+            await tx
+              .update(products)
+              .set({ stock: sql`${products.stock} + ${item.quantity}` })
+              .where(eq(products.id, item.productId));
+          }
+        } else {
+          console.log(`Purchase status is ${newPurchase.status}, skipping stock update`);
+        }
+      }
+
+      return newPurchase;
+    });
+  }
+
+  async updatePurchase(id: number, purchase: InsertPurchase, items: InsertPurchaseItem[]): Promise<Purchase | undefined> {
+    const existing = await this.getPurchaseById(id);
+    if (!existing) return undefined;
+
+    return await getDb().transaction(async (tx) => {
+      // 1. Revert stock if previously received
+      if (existing.status === 'received') {
+        const oldItems = await this.getPurchaseItems(id);
+        console.log(`Reverting stock for purchase ${id} (items: ${oldItems.length})`);
+        for (const item of oldItems) {
+          await tx
+            .update(products)
+            .set({ stock: sql`${products.stock} - ${item.quantity}` })
+            .where(eq(products.id, item.productId));
+        }
+      }
+
+      // 2. Delete old items
+      await tx.delete(purchaseItems).where(eq(purchaseItems.purchaseId, id));
+
+      // 3. Update purchase details
+      const purchaseWithDefaults = {
+        ...purchase,
+        status: purchase.status || existing.status,
+        date: purchase.date ? new Date(purchase.date) : new Date(existing.date)
+      };
+
+      const [updatedPurchase] = await tx
+        .update(purchases)
+        .set(purchaseWithDefaults)
+        .where(eq(purchases.id, id))
+        .returning();
+
+      // 4. Insert new items
+      if (items.length > 0) {
+        const itemsWithPurchaseId = items.map(item => ({
+          ...item,
+          purchaseId: id
+        }));
+        await tx.insert(purchaseItems).values(itemsWithPurchaseId);
+
+        // 5. Apply new stock if status is received
+        if (updatedPurchase.status === 'received') {
+          console.log(`Applying new stock for purchase ${id} (items: ${items.length})`);
           for (const item of items) {
             await tx
               .update(products)
@@ -407,7 +475,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      return newPurchase;
+      return updatedPurchase;
     });
   }
 }

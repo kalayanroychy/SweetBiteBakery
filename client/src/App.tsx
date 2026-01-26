@@ -34,11 +34,22 @@ import UserPanel from "@/pages/UserPanel";
 import Layout from "@/components/layout/Layout";
 import AdminLayout from "@/components/layout/AdminLayout";
 
+import HomeVariant1 from "@/pages/HomeVariant1";
+import HomeVariant2 from "@/pages/HomeVariant2";
+import HomeVariant3 from "@/pages/HomeVariant3";
+import HomeVariant4 from "@/pages/HomeVariant4";
+
 function Router() {
   return (
     <Switch>
       {/* Public Routes */}
       <Route path="/" component={Home} />
+      {/* Design Variants Preview Routes */}
+      <Route path="/v1" component={HomeVariant1} />
+      <Route path="/v2" component={HomeVariant2} />
+      <Route path="/v3" component={HomeVariant3} />
+      <Route path="/v4" component={HomeVariant4} />
+
       <Route path="/products" component={Products} />
       <Route path="/products/:slug" component={ProductDetails} />
       <Route path="/cart" component={Cart} />

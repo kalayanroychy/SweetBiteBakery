@@ -42,7 +42,7 @@ export default function AdminPurchases() {
     return (
         <AdminLayout>
             <Helmet>
-                <title>Purchase Invoices | SweetBite Admin</title>
+                <title>Purchase Invoices | Probashi Bakery Admin</title>
             </Helmet>
 
             <div className="flex justify-between items-center mb-6 px-6 pt-6">

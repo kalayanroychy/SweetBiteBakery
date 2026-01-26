@@ -38,9 +38,9 @@ export const POSInvoice = forwardRef<HTMLDivElement, POSInvoiceProps>(({ order }
             <div className="w-[80mm] max-w-full mx-auto border sm:border-0 p-2">
                 {/* Header */}
                 <div className="text-center mb-4">
-                    <h1 className="text-xl font-bold uppercase">Probash Bakery</h1>
-                    <p className="text-xs">123 Bakery Street, Sweet City</p>
-                    <p className="text-xs">Phone: (555) 123-4567</p>
+                    <h1 className="text-xl font-bold uppercase">Probashi Bakery</h1>
+                    <p className="text-xs">25 katalgonj,Panchalish ThanaChattogram, 4203</p>
+                    <p className="text-xs">Phone: 01829 88 88 88</p>
                 </div>
 
                 {/* Order Info */}
@@ -92,7 +92,7 @@ export const POSInvoice = forwardRef<HTMLDivElement, POSInvoiceProps>(({ order }
                 {/* Footer */}
                 <div className="text-center text-xs space-y-2">
                     <p>Thank you for your purchase!</p>
-                    <p>Visit us at www.sweetbite.com</p>
+                    <p>Visit us at www.probashibakery.com</p>
                 </div>
             </div>
         </div>

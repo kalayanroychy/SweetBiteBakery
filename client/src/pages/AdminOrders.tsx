@@ -621,7 +621,7 @@ function generateInvoiceHTML(order: Order): string {
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Invoice #${order.id} - SweetBite Bakery</title>
+      <title>Invoice #${order.id} - Probashi Bakery</title>
       <style>
         @media print {
           body { margin: 0; }
@@ -777,10 +777,10 @@ function generateInvoiceHTML(order: Order): string {
     <body>
       <div class="invoice-header">
         <div class="company-info">
-          <h1>🍰 SweetBite Bakery</h1>
+          <h1>🍰 Probashi Bakery</h1>
           <p>Fresh Baked Goods Daily</p>
-          <p>Email: info@sweetbitebakery.com</p>
-          <p>Phone: +880 1234-567890</p>
+          <p>Email: probashibakery@gmail.com</p>
+          <p>Phone: 01829 88 88 88</p>
         </div>
         <div class="invoice-details">
           <h2>INVOICE</h2>
@@ -855,7 +855,7 @@ function generateInvoiceHTML(order: Order): string {
       
       <div class="footer">
         <p><strong>Thank you for your order!</strong></p>
-        <p>If you have any questions about this invoice, please contact us at info@sweetbitebakery.com</p>
+        <p>If you have any questions about this invoice, please contact us at probashibakery@gmail.com</p>
         <p style="margin-top: 20px; font-size: 12px;">This is a computer-generated invoice. No signature required.</p>
       </div>
     </body>

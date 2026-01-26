@@ -136,8 +136,8 @@ export default function OrderTracking() {
     return (
         <Layout>
             <Helmet>
-                <title>Order Tracking | SweetBite Bakery</title>
-                <meta name="description" content="Track your order from SweetBite Bakery" />
+                <title>Order Tracking | Probashi Bakery</title>
+                <meta name="description" content="Track your order from Probashi Bakery" />
             </Helmet>
 
             <div className="min-h-screen bg-gradient-to-b from-neutral to-white">
@@ -415,11 +415,11 @@ export default function OrderTracking() {
                                             <h3 className="font-bold text-sm mb-3 text-gray-900">Need Help?</h3>
                                             <div className="space-y-2">
                                                 <a
-                                                    href="mailto:info@sweetbitebakery.com"
+                                                    href="mailto:probashibakery@gmail.com"
                                                     className="flex items-center gap-2 text-sm text-gray-700 hover:text-primary transition-colors"
                                                 >
                                                     <Mail className="w-4 h-4" />
-                                                    <span>info@sweetbitebakery.com</span>
+                                                    <span>probashibakery@gmail.com</span>
                                                 </a>
                                                 <a
                                                     href="tel:+8801234567890"

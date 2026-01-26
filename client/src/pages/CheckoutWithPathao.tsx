@@ -250,8 +250,8 @@ const CheckoutWithPathao = () => {
     return (
         <Layout>
             <Helmet>
-                <title>Checkout | SweetBite Bakery</title>
-                <meta name="description" content="Complete your order at SweetBite Bakery with Pathao courier delivery." />
+                <title>Checkout | Probashi Bakery</title>
+                <meta name="description" content="Complete your order at Probashi Bakery with Pathao courier delivery." />
             </Helmet>
 
             <div className="container mx-auto px-4 py-16">

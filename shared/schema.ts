@@ -252,7 +252,9 @@ export const purchases = pgTable("purchases", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertPurchaseSchema = createInsertSchema(purchases).pick({
+export const insertPurchaseSchema = createInsertSchema(purchases, {
+  date: z.coerce.date(),
+}).pick({
   supplierId: true,
   invoiceNumber: true,
   date: true,
@@ -275,7 +277,6 @@ export const purchaseItems = pgTable("purchase_items", {
 });
 
 export const insertPurchaseItemSchema = createInsertSchema(purchaseItems).pick({
-  purchaseId: true,
   productId: true,
   quantity: true,
   unitCost: true,

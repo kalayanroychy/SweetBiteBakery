@@ -79,8 +79,7 @@ const Contact = () => {
                   <div>
                     <h3 className="font-semibold text-lg text-primary mb-2">Visit Us</h3>
                     <p className="text-gray-700">
-                      123 Bakery Lane, Sweet District<br />
-                      Metropolis, 54321
+                      25 katalgonj,Panchalish Thana<br />Chattogram, 4203
                     </p>
                   </div>
                 </div>
@@ -91,7 +90,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-primary mb-2">Call Us</h3>
-                    <p className="text-gray-700">(555) 123-4567</p>
+                    <p className="text-gray-700">01829 88 88 88</p>
                     <p className="text-sm text-gray-500 mt-1">Available during business hours</p>
                   </div>
                 </div>
@@ -102,7 +101,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-primary mb-2">Email Us</h3>
-                    <p className="text-gray-700">hello@Probashi.com</p>
+                    <p className="text-gray-700">probashibakery@gmail.com</p>
                     <p className="text-sm text-gray-500 mt-1">We'll respond within 24 hours</p>
                   </div>
                 </div>
@@ -114,9 +113,7 @@ const Contact = () => {
                   <div>
                     <h3 className="font-semibold text-lg text-primary mb-2">Business Hours</h3>
                     <div className="text-gray-700">
-                      <p>Monday - Friday: 7:00 AM - 8:00 PM</p>
-                      <p>Saturday: 8:00 AM - 8:00 PM</p>
-                      <p>Sunday: 9:00 AM - 6:00 PM</p>
+                      <p>Monday - Sunday: 7:00 AM - 12:00 AM</p>
                     </div>
                   </div>
                 </div>

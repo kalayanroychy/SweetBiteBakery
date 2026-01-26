@@ -178,7 +178,7 @@ const ContactSection = () => {
                   <MapPin className="text-primary mt-1 mr-4" />
                   <div>
                     <h4 className="font-bold">Address</h4>
-                    <p className="text-text-dark">123 Baker Street, Sweetville, CA 90210</p>
+                    <p className="text-text-dark">25 katalgonj,Panchalish Thana,Chattogram, 4203</p>
                   </div>
                 </div>
 
@@ -186,9 +186,7 @@ const ContactSection = () => {
                   <Clock className="text-primary mt-1 mr-4" />
                   <div>
                     <h4 className="font-bold">Hours</h4>
-                    <p className="text-text-dark">Monday - Friday: 7am - 7pm</p>
-                    <p className="text-text-dark">Saturday: 8am - 8pm</p>
-                    <p className="text-text-dark">Sunday: 8am - 5pm</p>
+                    <p className="text-text-dark">Monday - Sunday: 7am - 12am</p>
                   </div>
                 </div>
 
@@ -196,7 +194,7 @@ const ContactSection = () => {
                   <Phone className="text-primary mt-1 mr-4" />
                   <div>
                     <h4 className="font-bold">Phone</h4>
-                    <p className="text-text-dark">(555) 123-4567</p>
+                    <p className="text-text-dark">01829 88 88 88</p>
                   </div>
                 </div>
 
@@ -204,7 +202,7 @@ const ContactSection = () => {
                   <Mail className="text-primary mt-1 mr-4" />
                   <div>
                     <h4 className="font-bold">Email</h4>
-                    <p className="text-text-dark">hello@ProbashiBakery.com</p>
+                    <p className="text-text-dark">probashibakery@gmail.com</p>
                   </div>
                 </div>
               </div>

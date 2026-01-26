@@ -47,8 +47,8 @@ const OrderConfirmation = () => {
   return (
     <Layout>
       <Helmet>
-        <title>Order Confirmation | SweetBite Bakery</title>
-        <meta name="description" content="Thank you for your order at SweetBite Bakery." />
+        <title>Order Confirmation | Probashi Bakery</title>
+        <meta name="description" content="Thank you for your order at Probashi Bakery." />
         <meta name="robots" content="noindex" />
       </Helmet>
 
@@ -135,7 +135,7 @@ const OrderConfirmation = () => {
                     <div>
                       <h3 className="font-semibold text-sm md:text-base">Enjoy Your Sweet Treats!</h3>
                       <p className="text-xs md:text-sm text-text-dark">
-                        Savor the delicious flavors of your SweetBite bakery items.
+                        Savor the delicious flavors of your Probashi Bakery items.
                       </p>
                     </div>
                   </li>

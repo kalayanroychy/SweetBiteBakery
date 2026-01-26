@@ -24,19 +24,19 @@ const Footer = () => {
             <div className="space-y-3 text-gray-300">
               <div className="flex items-start">
                 <MapPin size={18} className="mr-3 mt-1 text-accent" />
-                <span>123 Bakery Lane, Sweet District<br />Metropolis, 54321</span>
+                <span>25 katalgonj,Panchalish Thana<br />Chattogram, 4203</span>
               </div>
               <div className="flex items-center">
                 <Phone size={18} className="mr-3 text-accent" />
-                <span>(555) 123-4567</span>
+                <span>01829 88 88 88 </span>
               </div>
               <div className="flex items-center">
                 <Mail size={18} className="mr-3 text-accent" />
-                <span>hello@Probashi Bakery.com</span>
+                <span>probashibakery@gmail.com</span>
               </div>
               <div className="flex items-center">
                 <Clock size={18} className="mr-3 text-accent" />
-                <span>Mon-Sat: 7:00 AM - 8:00 PM</span>
+                <span>Mon-Sun: 7:00 AM - 12:00 AM</span>
               </div>
             </div>
           </div>
@@ -156,7 +156,7 @@ const Footer = () => {
       {/* Bottom Bar */}
       <div className="border-t border-white/10 py-6">
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
-          <p>&copy; {new Date().getFullYear()} Probashi Bakery Bakery. All rights reserved.</p>
+          <p>&copy; 1980 - {new Date().getFullYear()} Probashi Bakery Bakery. All rights reserved.</p>
           <div className="mt-3 md:mt-0 flex space-x-6">
             <span className="hover:text-accent cursor-pointer transition-colors">Privacy Policy</span>
             <span className="hover:text-accent cursor-pointer transition-colors">Terms of Service</span>

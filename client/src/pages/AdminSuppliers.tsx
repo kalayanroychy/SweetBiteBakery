@@ -144,7 +144,7 @@ export default function AdminSuppliers() {
     return (
         <AdminLayout>
             <Helmet>
-                <title>Suppliers | SweetBite Admin</title>
+                <title>Suppliers | Probashi Bakery Admin</title>
             </Helmet>
 
             <div className="flex justify-between items-center mb-6 px-6 pt-6">

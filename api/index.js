@@ -12030,19 +12030,25 @@ __export(schema_exports, {
   insertOrderItemSchema: () => insertOrderItemSchema,
   insertOrderSchema: () => insertOrderSchema,
   insertProductSchema: () => insertProductSchema,
+  insertPurchaseItemSchema: () => insertPurchaseItemSchema,
+  insertPurchaseSchema: () => insertPurchaseSchema,
   insertSettingsSchema: () => insertSettingsSchema,
+  insertSupplierSchema: () => insertSupplierSchema,
   insertUserSchema: () => insertUserSchema,
   loginSchema: () => loginSchema,
   newsletterSchema: () => newsletterSchema,
   orderItems: () => orderItems,
   orders: () => orders,
   products: () => products,
+  purchaseItems: () => purchaseItems,
+  purchases: () => purchases,
   registerSchema: () => registerSchema,
   session: () => session,
   settings: () => settings,
+  suppliers: () => suppliers,
   users: () => users
 });
-var categories, insertCategorySchema, products, insertProductSchema, users, insertUserSchema, orders, insertOrderSchema, orderItems, insertOrderItemSchema, settings, insertSettingsSchema, cartSchema, loginSchema, registerSchema, newsletterSchema, contactFormSchema, session;
+var categories, insertCategorySchema, products, insertProductSchema, users, insertUserSchema, orders, insertOrderSchema, orderItems, insertOrderItemSchema, settings, insertSettingsSchema, cartSchema, loginSchema, registerSchema, newsletterSchema, contactFormSchema, suppliers, insertSupplierSchema, purchases, insertPurchaseSchema, purchaseItems, insertPurchaseItemSchema, session;
 var init_schema2 = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -12211,6 +12217,57 @@ var init_schema2 = __esm({
       email: z.string().email("Please enter a valid email address"),
       subject: z.string().min(2, "Please select a subject"),
       message: z.string().min(10, "Message must be at least 10 characters")
+    });
+    suppliers = pgTable("suppliers", {
+      id: serial("id").primaryKey(),
+      name: text("name").notNull(),
+      contactName: text("contact_name"),
+      email: text("email"),
+      phone: text("phone"),
+      address: text("address"),
+      createdAt: timestamp("created_at").defaultNow()
+    });
+    insertSupplierSchema = createInsertSchema(suppliers).pick({
+      name: true,
+      contactName: true,
+      email: true,
+      phone: true,
+      address: true
+    });
+    purchases = pgTable("purchases", {
+      id: serial("id").primaryKey(),
+      supplierId: integer("supplier_id").notNull(),
+      invoiceNumber: text("invoice_number").notNull(),
+      date: timestamp("date").notNull().defaultNow(),
+      totalAmount: doublePrecision("total_amount").notNull(),
+      status: text("status").notNull().default("pending"),
+      // pending, received
+      notes: text("notes"),
+      createdAt: timestamp("created_at").defaultNow()
+    });
+    insertPurchaseSchema = createInsertSchema(purchases, {
+      date: z.coerce.date()
+    }).pick({
+      supplierId: true,
+      invoiceNumber: true,
+      date: true,
+      totalAmount: true,
+      status: true,
+      notes: true
+    });
+    purchaseItems = pgTable("purchase_items", {
+      id: serial("id").primaryKey(),
+      purchaseId: integer("purchase_id").notNull(),
+      productId: integer("product_id").notNull(),
+      quantity: integer("quantity").notNull(),
+      unitCost: doublePrecision("unit_cost").notNull(),
+      subtotal: doublePrecision("subtotal").notNull()
+    });
+    insertPurchaseItemSchema = createInsertSchema(purchaseItems).pick({
+      productId: true,
+      quantity: true,
+      unitCost: true,
+      subtotal: true
     });
     session = pgTable("session", {
       sid: text("sid").primaryKey(),
@@ -18041,6 +18098,118 @@ var DatabaseStorage = class {
       return newOrder;
     });
   }
+  // Supplier operations
+  async getSuppliers() {
+    return await getDb2().select().from(suppliers).orderBy(desc(suppliers.createdAt));
+  }
+  async getSupplierById(id) {
+    const [supplier] = await getDb2().select().from(suppliers).where(eq(suppliers.id, id));
+    return supplier;
+  }
+  async createSupplier(supplier) {
+    const [newSupplier] = await getDb2().insert(suppliers).values(supplier).returning();
+    return newSupplier;
+  }
+  async updateSupplier(id, supplier) {
+    const [updatedSupplier] = await getDb2().update(suppliers).set(supplier).where(eq(suppliers.id, id)).returning();
+    return updatedSupplier;
+  }
+  async deleteSupplier(id) {
+    const result = await getDb2().delete(suppliers).where(eq(suppliers.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+  // Purchase operations
+  async getPurchases() {
+    try {
+      const result = await getDb2().select().from(purchases).orderBy(desc(purchases.createdAt));
+      console.log(`getPurchases fetched ${result.length} records`);
+      return result;
+    } catch (e) {
+      console.error("getPurchases error:", e);
+      throw e;
+    }
+  }
+  async getPurchaseById(id) {
+    const [purchase] = await getDb2().select().from(purchases).where(eq(purchases.id, id));
+    return purchase;
+  }
+  async createPurchase(purchase) {
+    const purchaseWithDefaults = {
+      ...purchase,
+      status: purchase.status || "pending",
+      date: purchase.date ? new Date(purchase.date) : /* @__PURE__ */ new Date()
+    };
+    const [newPurchase] = await getDb2().insert(purchases).values(purchaseWithDefaults).returning();
+    return newPurchase;
+  }
+  async updatePurchaseStatus(id, status) {
+    const [updatedPurchase] = await getDb2().update(purchases).set({ status }).where(eq(purchases.id, id)).returning();
+    return updatedPurchase;
+  }
+  async getPurchaseItems(purchaseId) {
+    return await getDb2().select().from(purchaseItems).where(eq(purchaseItems.purchaseId, purchaseId));
+  }
+  async processPurchase(purchase, items) {
+    return await getDb2().transaction(async (tx) => {
+      const purchaseWithDefaults = {
+        ...purchase,
+        status: purchase.status || "pending",
+        date: purchase.date ? new Date(purchase.date) : /* @__PURE__ */ new Date()
+      };
+      const [newPurchase] = await tx.insert(purchases).values(purchaseWithDefaults).returning();
+      if (items.length > 0) {
+        const itemsWithPurchaseId = items.map((item) => ({
+          ...item,
+          purchaseId: newPurchase.id
+        }));
+        await tx.insert(purchaseItems).values(itemsWithPurchaseId);
+        if (newPurchase.status === "received") {
+          console.log(`Processing stock update for purchase ${newPurchase.id}, items: ${items.length}`);
+          for (const item of items) {
+            console.log(`Updating stock for product ${item.productId} by +${item.quantity}`);
+            await tx.update(products).set({ stock: sql`${products.stock} + ${item.quantity}` }).where(eq(products.id, item.productId));
+          }
+        } else {
+          console.log(`Purchase status is ${newPurchase.status}, skipping stock update`);
+        }
+      }
+      return newPurchase;
+    });
+  }
+  async updatePurchase(id, purchase, items) {
+    const existing = await this.getPurchaseById(id);
+    if (!existing) return void 0;
+    return await getDb2().transaction(async (tx) => {
+      if (existing.status === "received") {
+        const oldItems = await this.getPurchaseItems(id);
+        console.log(`Reverting stock for purchase ${id} (items: ${oldItems.length})`);
+        for (const item of oldItems) {
+          await tx.update(products).set({ stock: sql`${products.stock} - ${item.quantity}` }).where(eq(products.id, item.productId));
+        }
+      }
+      await tx.delete(purchaseItems).where(eq(purchaseItems.purchaseId, id));
+      const purchaseWithDefaults = {
+        ...purchase,
+        status: purchase.status || existing.status,
+        date: purchase.date ? new Date(purchase.date) : new Date(existing.date)
+      };
+      const [updatedPurchase] = await tx.update(purchases).set(purchaseWithDefaults).where(eq(purchases.id, id)).returning();
+      if (items.length > 0) {
+        const itemsWithPurchaseId = items.map((item) => ({
+          ...item,
+          purchaseId: id
+        }));
+        await tx.insert(purchaseItems).values(itemsWithPurchaseId);
+        if (updatedPurchase.status === "received") {
+          console.log(`Applying new stock for purchase ${id} (items: ${items.length})`);
+          for (const item of items) {
+            await tx.update(products).set({ stock: sql`${products.stock} + ${item.quantity}` }).where(eq(products.id, item.productId));
+          }
+        }
+      }
+      return updatedPurchase;
+    });
+  }
 };
 
 // server/storage.ts
@@ -18051,12 +18220,18 @@ var MemStorage = class {
   orders;
   orderItems;
   settings;
+  suppliers;
+  purchases;
+  purchaseItems;
   categoryId;
   productId;
   userId;
   orderId;
   orderItemId;
   settingId;
+  supplierId;
+  purchaseId;
+  purchaseItemId;
   constructor() {
     this.categories = /* @__PURE__ */ new Map();
     this.products = /* @__PURE__ */ new Map();
@@ -18064,12 +18239,18 @@ var MemStorage = class {
     this.orders = /* @__PURE__ */ new Map();
     this.orderItems = /* @__PURE__ */ new Map();
     this.settings = /* @__PURE__ */ new Map();
+    this.suppliers = /* @__PURE__ */ new Map();
+    this.purchases = /* @__PURE__ */ new Map();
+    this.purchaseItems = /* @__PURE__ */ new Map();
     this.categoryId = 1;
     this.productId = 1;
     this.userId = 1;
     this.orderId = 1;
     this.orderItemId = 1;
     this.settingId = 1;
+    this.supplierId = 1;
+    this.purchaseId = 1;
+    this.purchaseItemId = 1;
   }
   // Category methods
   async getCategories() {
@@ -18249,6 +18430,97 @@ var MemStorage = class {
     const itemsWithOrderId = items.map((item) => ({ ...item, orderId: newOrder.id }));
     await this.createOrderItems(itemsWithOrderId);
     return newOrder;
+  }
+  // Supplier methods
+  async getSuppliers() {
+    return Array.from(this.suppliers.values());
+  }
+  async getSupplierById(id) {
+    return this.suppliers.get(id);
+  }
+  async createSupplier(supplier) {
+    const id = this.supplierId++;
+    const now = /* @__PURE__ */ new Date();
+    const newSupplier = {
+      ...supplier,
+      id,
+      createdAt: now,
+      contactName: supplier.contactName || null,
+      email: supplier.email || null,
+      phone: supplier.phone || null,
+      address: supplier.address || null
+    };
+    this.suppliers.set(id, newSupplier);
+    return newSupplier;
+  }
+  async updateSupplier(id, supplier) {
+    const existing = this.suppliers.get(id);
+    if (!existing) return void 0;
+    const updated = { ...existing, ...supplier };
+    this.suppliers.set(id, updated);
+    return updated;
+  }
+  async deleteSupplier(id) {
+    return this.suppliers.delete(id);
+  }
+  // Purchase methods
+  async getPurchases() {
+    return Array.from(this.purchases.values());
+  }
+  async getPurchaseById(id) {
+    return this.purchases.get(id);
+  }
+  async createPurchase(purchase) {
+    const id = this.purchaseId++;
+    const now = /* @__PURE__ */ new Date();
+    const newPurchase = {
+      ...purchase,
+      id,
+      createdAt: now,
+      status: purchase.status || "pending",
+      notes: purchase.notes || null,
+      date: purchase.date ? new Date(purchase.date) : /* @__PURE__ */ new Date()
+    };
+    this.purchases.set(id, newPurchase);
+    return newPurchase;
+  }
+  async updatePurchaseStatus(id, status) {
+    const purchase = this.purchases.get(id);
+    if (!purchase) return void 0;
+    const updated = { ...purchase, status };
+    this.purchases.set(id, updated);
+    return updated;
+  }
+  async updatePurchase(id, purchase, items) {
+    const existing = this.purchases.get(id);
+    if (!existing) return void 0;
+    const updated = {
+      ...existing,
+      ...purchase,
+      id,
+      date: purchase.date ? new Date(purchase.date) : new Date(existing.date),
+      status: purchase.status || existing.status,
+      notes: purchase.notes || existing.notes
+    };
+    this.purchases.set(id, updated);
+    return updated;
+  }
+  async getPurchaseItems(purchaseId) {
+    return Array.from(this.purchaseItems.values()).filter((item) => item.purchaseId === purchaseId);
+  }
+  async processPurchase(purchase, items) {
+    const newPurchase = await this.createPurchase(purchase);
+    for (const item of items) {
+      const id = this.purchaseItemId++;
+      const newItem = { ...item, id, purchaseId: newPurchase.id };
+      this.purchaseItems.set(id, newItem);
+      const product = this.products.get(item.productId);
+      if (product) {
+        const updatedProduct = { ...product, stock: product.stock + item.quantity };
+        this.products.set(product.id, updatedProduct);
+      }
+    }
+    return newPurchase;
   }
   // Settings methods
   async getSettings(key) {
@@ -18611,6 +18883,7 @@ async function registerRoutes(app2) {
         offset
       });
     } catch (error) {
+      console.error("Products API Error:", error);
       res.status(500).json({ message: "Failed to fetch products" });
     }
   });
@@ -18674,6 +18947,7 @@ async function registerRoutes(app2) {
         category: category || { id: 0, name: "Unknown", slug: "unknown" }
       });
     } catch (error) {
+      console.error("Product by Slug API Error:", error);
       res.status(500).json({ message: "Failed to fetch product" });
     }
   });
@@ -18819,6 +19093,105 @@ async function registerRoutes(app2) {
       res.status(500).json({ message: "Failed to update password" });
     }
   });
+  app2.get("/api/admin/suppliers", checkAuth, async (_req, res) => {
+    try {
+      const suppliers2 = await storage.getSuppliers();
+      res.json(suppliers2);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch suppliers" });
+    }
+  });
+  app2.post("/api/admin/suppliers", checkAuth, async (req, res) => {
+    try {
+      const supplierData = insertSupplierSchema.parse(req.body);
+      const supplier = await storage.createSupplier(supplierData);
+      res.status(201).json(supplier);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: "Invalid input", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create supplier" });
+      }
+    }
+  });
+  app2.put("/api/admin/suppliers/:id", checkAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      const supplierData = insertSupplierSchema.partial().parse(req.body);
+      const supplier = await storage.updateSupplier(id, supplierData);
+      if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+      res.json(supplier);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update supplier" });
+    }
+  });
+  app2.delete("/api/admin/suppliers/:id", checkAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      const success = await storage.deleteSupplier(id);
+      if (!success) return res.status(404).json({ message: "Supplier not found" });
+      res.json({ message: "Supplier deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete supplier" });
+    }
+  });
+  app2.get("/api/admin/purchases", checkAuth, async (_req, res) => {
+    try {
+      const purchases2 = await storage.getPurchases();
+      res.json(purchases2);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch purchases" });
+    }
+  });
+  app2.put("/api/admin/purchases/:id", checkAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      const { items, ...purchaseData } = req.body;
+      const purchase = insertPurchaseSchema.partial().parse(purchaseData);
+      const purchaseItems2 = items.map((item) => insertPurchaseItemSchema.parse(item));
+      const updatedPurchase = await storage.updatePurchase(id, purchase, purchaseItems2);
+      if (!updatedPurchase) return res.status(404).json({ message: "Purchase not found" });
+      res.json(updatedPurchase);
+    } catch (error) {
+      console.error("Purchase update error:", error);
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: "Invalid input", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update purchase" });
+      }
+    }
+  });
+  app2.get("/api/admin/purchases/:id", checkAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      const purchase = await storage.getPurchaseById(id);
+      if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+      const items = await storage.getPurchaseItems(id);
+      res.json({ ...purchase, items });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch purchase" });
+    }
+  });
+  app2.post("/api/admin/purchases", checkAuth, async (req, res) => {
+    try {
+      const { items, ...purchaseData } = req.body;
+      const purchase = insertPurchaseSchema.parse(purchaseData);
+      const purchaseItems2 = items.map((item) => insertPurchaseItemSchema.parse(item));
+      const newPurchase = await storage.processPurchase(purchase, purchaseItems2);
+      res.status(201).json(newPurchase);
+    } catch (error) {
+      console.error("Purchase creation error:", error);
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: "Invalid input", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create purchase" });
+      }
+    }
+  });
   app2.post("/api/admin/products", checkAuth, async (req, res) => {
     try {
       const productData = insertProductSchema.parse(req.body);
@@ -18839,12 +19212,14 @@ async function registerRoutes(app2) {
         return res.status(400).json({ message: "Invalid product ID" });
       }
       const productData = insertProductSchema.partial().parse(req.body);
+      console.log(`Updating product ${id} with:`, productData);
       const product = await storage.updateProduct(id, productData);
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
       res.json(product);
     } catch (error) {
+      console.error("Product Update Error:", error);
       if (error instanceof ZodError) {
         res.status(400).json({ message: "Invalid input", errors: error.errors });
       } else {

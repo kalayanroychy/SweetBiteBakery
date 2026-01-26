@@ -14,7 +14,9 @@ import {
   contactFormSchema,
   insertSupplierSchema,
   insertPurchaseSchema,
-  insertPurchaseItemSchema
+  insertPurchaseItemSchema,
+  type InsertPurchase,
+  type InsertPurchaseItem
 } from "../shared/schema.js";
 import { checkAuth, authenticateUser } from "./auth.js";
 import { loadInitialData } from "./loadInitialData.js";
@@ -477,6 +479,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(purchases);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch purchases" });
+    }
+  });
+
+  app.put("/api/admin/purchases/:id", checkAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+
+      const { items, ...purchaseData } = req.body;
+      const purchase = insertPurchaseSchema.partial().parse(purchaseData);
+
+      // Need full items schema for validation
+      const purchaseItems = items.map((item: any) => insertPurchaseItemSchema.parse(item));
+
+      const updatedPurchase = await storage.updatePurchase(id, purchase as InsertPurchase, purchaseItems);
+      if (!updatedPurchase) return res.status(404).json({ message: "Purchase not found" });
+
+      res.json(updatedPurchase);
+    } catch (error) {
+      console.error("Purchase update error:", error);
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: "Invalid input", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update purchase" });
+      }
     }
   });
 

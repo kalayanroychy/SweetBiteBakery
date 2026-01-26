@@ -65,6 +65,7 @@ export interface IStorage {
   getPurchaseById(id: number): Promise<Purchase | undefined>;
   createPurchase(purchase: InsertPurchase): Promise<Purchase>;
   updatePurchaseStatus(id: number, status: string): Promise<Purchase | undefined>;
+  updatePurchase(id: number, purchase: InsertPurchase, items: InsertPurchaseItem[]): Promise<Purchase | undefined>;
   getPurchaseItems(purchaseId: number): Promise<PurchaseItem[]>;
   processPurchase(purchase: InsertPurchase, items: InsertPurchaseItem[]): Promise<Purchase>;
 
@@ -350,7 +351,15 @@ export class MemStorage implements IStorage {
   async createSupplier(supplier: InsertSupplier): Promise<Supplier> {
     const id = this.supplierId++;
     const now = new Date();
-    const newSupplier: Supplier = { ...supplier, id, createdAt: now };
+    const newSupplier: Supplier = {
+      ...supplier,
+      id,
+      createdAt: now,
+      contactName: supplier.contactName || null,
+      email: supplier.email || null,
+      phone: supplier.phone || null,
+      address: supplier.address || null
+    };
     this.suppliers.set(id, newSupplier);
     return newSupplier;
   }
@@ -385,7 +394,7 @@ export class MemStorage implements IStorage {
       createdAt: now,
       status: purchase.status || "pending",
       notes: purchase.notes || null,
-      date: new Date(purchase.date)
+      date: purchase.date ? new Date(purchase.date) : new Date()
     };
     this.purchases.set(id, newPurchase);
     return newPurchase;
@@ -396,6 +405,23 @@ export class MemStorage implements IStorage {
     if (!purchase) return undefined;
     const updated = { ...purchase, status };
     this.purchases.set(id, updated);
+    return updated;
+  }
+
+  async updatePurchase(id: number, purchase: InsertPurchase, items: InsertPurchaseItem[]): Promise<Purchase | undefined> {
+    const existing = this.purchases.get(id);
+    if (!existing) return undefined;
+
+    const updated = {
+      ...existing,
+      ...purchase,
+      id,
+      date: purchase.date ? new Date(purchase.date) : new Date(existing.date),
+      status: purchase.status || existing.status,
+      notes: purchase.notes || existing.notes,
+    };
+    this.purchases.set(id, updated);
+    // Note: Items update not implemented in MemStorage for brevity as we use DatabaseStorage
     return updated;
   }
 

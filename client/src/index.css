@@ -11,13 +11,16 @@
   --card-foreground: 20 14.3% 4.1%;
   --popover: 0 0% 100%;
   --popover-foreground: 20 14.3% 4.1%;
-  --primary: 23 58% 36%; /* Probashi brown: #8B5A2B */
+  --primary: 23 58% 36%;
+  /* Probashi brown: #8B5A2B */
   --primary-foreground: 60 9.1% 97.8%;
-  --secondary: 39 37% 92%; /* Probashi cream: #F5F0E1 */
+  --secondary: 39 37% 92%;
+  /* Probashi cream: #F5F0E1 */
   --secondary-foreground: 24 9.8% 10%;
   --muted: 60 4.8% 95.9%;
   --muted-foreground: 25 5.3% 44.7%;
-  --accent: 340 80% 89%; /* Probashi pink: #F8C8DC */
+  --accent: 340 80% 89%;
+  /* Probashi pink: #F8C8DC */
   --accent-foreground: 24 9.8% 10%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 60 9.1% 97.8%;
@@ -38,19 +41,28 @@
   --sidebar-accent-foreground: 24 9.8% 10%;
   --sidebar-border: 24 9.8% 86%;
   --sidebar-ring: 23 58% 36%;
-  --neutral: 39 40% 96%; /* Probashi neutral: #F9F5EB */
-  --text-dark: 26 30% 19%; /* Probashi text-dark: #3C2A21 */
+  --neutral: 39 40% 96%;
+  /* Probashi neutral: #F9F5EB */
+  --text-dark: 26 30% 19%;
+  /* Probashi text-dark: #3C2A21 */
   --success: 122.2 39% 49.8%;
   --error: 0 72.2% 50.6%;
-  
+
   /* Bakery Theme Colors */
-  --honey: 38 58% 60%; /* Warm honey: #D6A057 */
-  --cream: 42 80% 95%; /* Soft cream: #FDF1E5 */
-  --blush: 16 81% 87%; /* Soft blush: #F6C7B6 */
-  --cinnamon: 23 55% 35%; /* Cinnamon brown: #8B5A2B */
-  --chocolate: 26 30% 19%; /* Dark chocolate: #3C2A21 */
-  --pistachio: 103 23% 75%; /* Pistachio accent: #B7D3AE */
-  --vanilla: 50 100% 98%; /* Vanilla white: #FFFEF8 */
+  --honey: 38 58% 60%;
+  /* Warm honey: #D6A057 */
+  --cream: 42 80% 95%;
+  /* Soft cream: #FDF1E5 */
+  --blush: 16 81% 87%;
+  /* Soft blush: #F6C7B6 */
+  --cinnamon: 23 55% 35%;
+  /* Cinnamon brown: #8B5A2B */
+  --chocolate: 26 30% 19%;
+  /* Dark chocolate: #3C2A21 */
+  --pistachio: 103 23% 75%;
+  /* Pistachio accent: #B7D3AE */
+  --vanilla: 50 100% 98%;
+  /* Vanilla white: #FFFEF8 */
 }
 
 .dark {
@@ -92,13 +104,18 @@
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply font-body bg-background text-foreground;
     color: hsl(var(--text-dark));
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-heading;
   }
 }
@@ -107,16 +124,59 @@
   .btn-primary {
     @apply bg-primary text-white py-3 px-6 rounded-full font-semibold hover:bg-opacity-90 transition-all transform hover:-translate-y-1;
   }
-  
+
   .btn-secondary {
     @apply bg-transparent border-2 border-primary text-primary py-3 px-6 rounded-full font-semibold hover:bg-primary hover:text-white transition-all transform hover:-translate-y-1;
   }
-  
+
   .container-custom {
     @apply container mx-auto px-4;
   }
-  
+
   .hover-card {
     @apply transition-transform duration-300 hover:-translate-y-2;
+  }
+}
+
+@media print {
+
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the printable section */
+  #printable-invoice,
+  #printable-invoice * {
+    visibility: visible;
+  }
+
+  /* Position the printable section */
+  #printable-invoice {
+    display: block !important;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    margin: 0;
+    padding: 0;
+    background: white;
+    box-shadow: none;
+    border: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    overflow: visible;
+  }
+
+  /* Ensure text is black for printing */
+  #printable-invoice {
+    color: black;
+  }
+
+  /* Hide interactive elements inside printable area if any leak through */
+  .no-print {
+    display: none !important;
   }
 }

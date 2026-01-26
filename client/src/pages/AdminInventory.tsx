@@ -98,7 +98,7 @@ export default function AdminInventory() {
     return (
         <AdminLayout>
             <Helmet>
-                <title>Inventory Management | SweetBite Admin</title>
+                <title>Inventory Management | Probashi Bakery Admin</title>
             </Helmet>
 
             <div className="flex justify-between items-center mb-6">
