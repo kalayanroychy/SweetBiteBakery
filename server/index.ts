@@ -12,6 +12,10 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
+// Enable Gzip compression
+import compression from "compression";
+app.use(compression());
+
 // Trust all proxies (Cloudflare -> Nginx -> Express)
 app.set('trust proxy', true);
 

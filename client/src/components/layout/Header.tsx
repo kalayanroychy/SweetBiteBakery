@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { ShoppingCart, User, Menu, ShoppingBag, X } from "lucide-react";
+import { ShoppingCart, User, Menu, ShoppingBag, X, ChevronDown } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import CartSidebar from "@/components/cart/CartSidebar";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const Header = () => {
   const [location] = useLocation();
   const { cart, isOpen, setIsOpen } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const totalItems = cart.items.reduce(
@@ -62,12 +63,19 @@ const Header = () => {
             <div className="flex items-center">
               <Link href="/">
                 <div className="flex items-center cursor-pointer">
-                  <span className="text-primary text-xl sm:text-2xl md:text-3xl font-heading font-bold tracking-tight">
-                    Probashi Bakery
-                  </span>
-                  <span className="ml-1 text-accent/80 text-[10px] sm:text-xs uppercase tracking-widest font-semibold hidden xs:inline-block">
-                    Bakery
-                  </span>
+                  <img
+                    src="/logo.png"
+                    alt="Probashi Bakery"
+                    className="h-12 md:h-16 w-auto object-contain"
+                  />
+                  <div className="ml-2 flex flex-col">
+                    <span className="text-primary text-xl sm:text-2xl md:text-3xl font-heading font-bold tracking-tight">
+                      Probashi Bakery
+                    </span>
+                    <span className="text-accent/80 text-[10px] sm:text-xs uppercase tracking-widest font-semibold hidden xs:inline-block">
+                      Bakery
+                    </span>
+                  </div>
                 </div>
               </Link>
             </div>
@@ -110,6 +118,8 @@ const Header = () => {
                   )}
                 </div>
               </Link>
+
+
               <Link href="/order-tracking">
                 <div className={`text-text-dark hover:text-primary transition-colors duration-300 font-semibold relative cursor-pointer ${location === "/order-tracking" ? "text-primary" : ""}`}>
                   <span>Order Tracking</span>
@@ -118,6 +128,31 @@ const Header = () => {
                   )}
                 </div>
               </Link>
+
+              {/* Policy Dropdown */}
+              <div className="relative group">
+                <div className="flex items-center text-text-dark hover:text-primary transition-colors duration-300 font-semibold cursor-pointer">
+                  <span>Policy</span>
+                  <ChevronDown className="ml-1 h-4 w-4" />
+                </div>
+                <div className="absolute top-full left-0 mt-2 w-48 bg-white shadow-lg rounded-md py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 border border-gray-100">
+                  <Link href="/privacy-policy">
+                    <div className="block px-4 py-2 text-sm text-text-dark hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer">
+                      Privacy Policy
+                    </div>
+                  </Link>
+                  <Link href="/terms">
+                    <div className="block px-4 py-2 text-sm text-text-dark hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer">
+                      Terms & Conditions
+                    </div>
+                  </Link>
+                  <Link href="/refund-policy">
+                    <div className="block px-4 py-2 text-sm text-text-dark hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer">
+                      Refund Policy
+                    </div>
+                  </Link>
+                </div>
+              </div>
             </nav>
 
             {/* Account & Cart Buttons - Desktop */}
@@ -200,96 +235,134 @@ const Header = () => {
       </header>
 
       {/* Mobile Menu (Full Screen Overlay) */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-[60] bg-white flex flex-col md:hidden">
-          {/* Mobile Menu Header */}
-          <div className="flex items-center justify-between px-4 h-16 border-b border-[#e3d9c8]">
-            <Link href="/" onClick={() => setMobileMenuOpen(false)}>
-              <div className="flex items-center cursor-pointer">
-                <span className="text-primary text-xl font-heading font-bold tracking-tight">
-                  Probashi Bakery
-                </span>
-                <span className="ml-1 text-accent/80 text-[10px] uppercase tracking-widest font-semibold">
-                  Bakery
-                </span>
-              </div>
-            </Link>
-            <button
-              className="text-primary p-2"
-              onClick={() => setMobileMenuOpen(false)}
-              aria-label="Close menu"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-
-          {/* Mobile Menu Items */}
-          <nav className="flex-1 overflow-y-auto py-8 px-6">
-            <ul className="space-y-6">
-              <li>
-                <Link href="/" onClick={() => setMobileMenuOpen(false)}>
-                  <div
-                    className={`text-lg font-medium ${location === "/" ? "text-primary" : "text-text-dark"}`}
-                  >
-                    Home
-                  </div>
-                </Link>
-              </li>
-              <li>
-                <Link href="/products" onClick={() => setMobileMenuOpen(false)}>
-                  <div
-                    className={`text-lg font-medium ${location === "/products" ? "text-primary" : "text-text-dark"}`}
-                  >
-                    Products
-                  </div>
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" onClick={() => setMobileMenuOpen(false)}>
-                  <div className={`text-lg font-medium ${location === "/about" ? "text-primary" : "text-text-dark"}`}>
-                    About Us
-                  </div>
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
-                  <div className={`text-lg font-medium ${location === "/contact" ? "text-primary" : "text-text-dark"}`}>
-                    Contact
-                  </div>
-                </Link>
-              </li>
-              <li className="pt-4 border-t border-[#e3d9c8]">
-                <Link
-                  href="/admin/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <div className="text-lg font-medium text-text-dark flex items-center">
-                    <User className="h-5 w-5 mr-2" />
-                    My Account
-                  </div>
-                </Link>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setTimeout(() => setIsOpen(true), 100);
-                  }}
-                  className="text-lg font-medium text-text-dark flex items-center w-full text-left"
-                >
-                  <ShoppingBag className="h-5 w-5 mr-2" />
-                  Shopping Cart
-                  {totalItems > 0 && (
-                    <span className="ml-2 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                      {totalItems}
+      {
+        mobileMenuOpen && (
+          <div className="fixed inset-0 z-[60] bg-white flex flex-col md:hidden">
+            {/* Mobile Menu Header */}
+            <div className="flex items-center justify-between px-4 h-16 border-b border-[#e3d9c8]">
+              <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+                <div className="flex items-center cursor-pointer">
+                  <img
+                    src="/logo.png"
+                    alt="Probashi Bakery"
+                    className="h-10 w-auto object-contain"
+                  />
+                  <div className="ml-2 flex flex-col">
+                    <span className="text-primary text-xl font-heading font-bold tracking-tight">
+                      Probashi Bakery
                     </span>
-                  )}
-                </button>
-              </li>
-            </ul>
-          </nav>
-        </div>
-      )}
+                    <span className="text-accent/80 text-[10px] uppercase tracking-widest font-semibold">
+                      Bakery
+                    </span>
+                  </div>
+                </div>
+              </Link>
+              <button
+                className="text-primary p-2"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Close menu"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Mobile Menu Items */}
+            <nav className="flex-1 overflow-y-auto py-8 px-6">
+              <ul className="space-y-6">
+                <li>
+                  <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+                    <div
+                      className={`text-lg font-medium ${location === "/" ? "text-primary" : "text-text-dark"}`}
+                    >
+                      Home
+                    </div>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/products" onClick={() => setMobileMenuOpen(false)}>
+                    <div
+                      className={`text-lg font-medium ${location === "/products" ? "text-primary" : "text-text-dark"}`}
+                    >
+                      Products
+                    </div>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/about" onClick={() => setMobileMenuOpen(false)}>
+                    <div className={`text-lg font-medium ${location === "/about" ? "text-primary" : "text-text-dark"}`}>
+                      About Us
+                    </div>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
+                    <div className={`text-lg font-medium ${location === "/contact" ? "text-primary" : "text-text-dark"}`}>
+                      Contact
+                    </div>
+                  </Link>
+                </li>
+                <li className="border-t border-[#e3d9c8] pt-4 mt-2">
+                  <button
+                    onClick={() => setPolicyOpen(!policyOpen)}
+                    className="flex items-center justify-between w-full text-lg font-medium text-text-dark"
+                  >
+                    <span>Policy</span>
+                    <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${policyOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  <div className={`overflow-hidden transition-all duration-300 ${policyOpen ? "max-h-40 mt-2" : "max-h-0"}`}>
+                    <ul className="pl-4 space-y-3 border-l-2 border-[#e3d9c8] ml-2">
+                      <li>
+                        <Link href="/privacy-policy" onClick={() => setMobileMenuOpen(false)}>
+                          <div className="text-base text-gray-600 active:text-primary">Privacy Policy</div>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/terms" onClick={() => setMobileMenuOpen(false)}>
+                          <div className="text-base text-gray-600 active:text-primary">Terms & Conditions</div>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/refund-policy" onClick={() => setMobileMenuOpen(false)}>
+                          <div className="text-base text-gray-600 active:text-primary">Refund Policy</div>
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+                </li>
+                <li className="pt-4 border-t border-[#e3d9c8]">
+                  <Link
+                    href="/admin/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <div className="text-lg font-medium text-text-dark flex items-center">
+                      <User className="h-5 w-5 mr-2" />
+                      My Account
+                    </div>
+                  </Link>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setTimeout(() => setIsOpen(true), 100);
+                    }}
+                    className="text-lg font-medium text-text-dark flex items-center w-full text-left"
+                  >
+                    <ShoppingBag className="h-5 w-5 mr-2" />
+                    Shopping Cart
+                    {totalItems > 0 && (
+                      <span className="ml-2 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {totalItems}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        )
+      }
 
       {/* Cart Sidebar */}
       <CartSidebar isOpen={isOpen} setIsOpen={setIsOpen} />

@@ -8,7 +8,7 @@ import { ProductWithCategory, Category } from "@shared/schema";
 import { useQueryState } from "@/hooks/use-query-state";
 
 const Products = () => {
-  const [queryParams, setQueryParams] = useQueryState();
+  const [queryParams] = useQueryState();
 
   // Fetch products with infinite query for progressive loading
   const {
@@ -26,14 +26,12 @@ const Products = () => {
 
       const searchParams = new URLSearchParams();
       searchParams.append('limit', limit.toString());
-      searchParams.append('offset', offset.toString());
+      searchParams.append('offset', offset.toString()); // type-check: pageParam is offset
 
       if (queryParams.category) searchParams.append('category', queryParams.category);
       if (queryParams.price) searchParams.append('price', queryParams.price);
       if (queryParams.q) searchParams.append('q', queryParams.q);
       if (queryParams.dietary) searchParams.append('dietary', queryParams.dietary);
-      // Add sort parameter
-      if (queryParams.sort) searchParams.append('sort', queryParams.sort);
 
       const response = await fetch(`/api/products?${searchParams.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch products');
@@ -43,8 +41,7 @@ const Products = () => {
       const loadedCount = allPages.reduce((sum, page) => sum + page.products.length, 0);
       return loadedCount < lastPage.total ? loadedCount : undefined;
     },
-    initialPageParam: 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    initialPageParam: 0
   });
 
   // Flatten all pages into single array
@@ -99,8 +96,6 @@ const Products = () => {
                 fetchNextPage={fetchNextPage}
                 hasNextPage={hasNextPage}
                 isFetchingNextPage={isFetchingNextPage}
-                queryParams={queryParams}
-                setQueryParams={setQueryParams}
               />
             </div>
           </div>

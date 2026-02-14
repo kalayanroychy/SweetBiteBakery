@@ -117,36 +117,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions));
     }
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-
-    // Apply sorting
-    if (filters?.sort) {
-      switch (filters.sort) {
-        case 'price-low':
-          query = query.orderBy(asc(products.price));
-          break;
-        case 'price-high':
-          query = query.orderBy(desc(products.price));
-          break;
-        case 'newest':
-          query = query.orderBy(desc(products.createdAt));
-          break;
-        case 'bestselling':
-          // Sort by isBestseller (true first) then by createdAt
-          query = query.orderBy(desc(products.isBestseller), desc(products.createdAt));
-          break;
-        case 'featured':
-        default:
-          // Sort by featured (true first) then by createdAt
-          query = query.orderBy(desc(products.featured), desc(products.createdAt));
-          break;
-      }
-    } else {
-      // Default sort
-      query = query.orderBy(desc(products.createdAt));
-    }
+    query = query.orderBy(desc(products.createdAt));
 
     // Build query based on parameters
     if (limit !== undefined && offset !== undefined) {

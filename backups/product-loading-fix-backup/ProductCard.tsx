@@ -7,10 +7,9 @@ import { formatCurrency, truncateText } from '@/lib/utils';
 type ProductCardProps = {
   product: ProductWithCategory;
   featured?: boolean;
-  priority?: boolean;
 };
 
-const ProductCard = ({ product, featured = false, priority = false }: ProductCardProps) => {
+const ProductCard = ({ product, featured = false }: ProductCardProps) => {
   const { addToCart } = useCart();
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -36,8 +35,8 @@ const ProductCard = ({ product, featured = false, priority = false }: ProductCar
   return (
     <Link href={`/products/${product.slug}`}>
       <div className={`bg-white rounded-2xl border border-[#e3d9c8] overflow-hidden group ${featured
-        ? 'shadow-md hover:shadow-xl transition-all duration-500'
-        : 'shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-2'
+          ? 'shadow-md hover:shadow-xl transition-all duration-500'
+          : 'shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-2'
         }`}>
         {/* Image Container with overlay effect */}
         <div className="relative overflow-hidden">
@@ -68,10 +67,6 @@ const ProductCard = ({ product, featured = false, priority = false }: ProductCar
             <img
               src={product.image}
               alt={product.name}
-              loading={priority ? "eager" : "lazy"}
-              decoding="async"
-              // @ts-ignore - fetchPriority is not yet in React types
-              fetchpriority={priority ? "high" : "auto"}
               className={`w-full ${featured ? 'h-72' : 'h-56'} object-cover transform transition-transform duration-700 group-hover:scale-105`}
             />
           </div>

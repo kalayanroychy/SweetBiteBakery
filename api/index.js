@@ -12143,6 +12143,14 @@ var init_schema2 = __esm({
       total: doublePrecision("total").notNull(),
       status: text("status").notNull().default("pending"),
       paymentMethod: text("payment_method").notNull(),
+      // Pathao Integration Fields
+      pathaoConsignmentId: text("pathao_consignment_id"),
+      pathaoMerchantOrderId: text("pathao_merchant_order_id"),
+      pathaoStatus: text("pathao_status"),
+      // Pathao Location Data
+      pathaoCityId: integer("pathao_city_id"),
+      pathaoZoneId: integer("pathao_zone_id"),
+      pathaoAreaId: integer("pathao_area_id"),
       createdAt: timestamp("created_at").defaultNow()
     });
     insertOrderSchema = createInsertSchema(orders).pick({
@@ -12156,7 +12164,10 @@ var init_schema2 = __esm({
       zipCode: true,
       total: true,
       status: true,
-      paymentMethod: true
+      paymentMethod: true,
+      pathaoCityId: true,
+      pathaoZoneId: true,
+      pathaoAreaId: true
     });
     orderItems = pgTable("order_items", {
       id: serial("id").primaryKey(),
@@ -17789,6 +17800,9 @@ var init_pathao = __esm({
           throw new Error("Failed to obtain Pathao access token");
         }
         const postData = options.body ? JSON.stringify(options.body) : void 0;
+        if (postData) {
+          console.log("[Pathao Request Body]:", postData);
+        }
         const headers = {
           "Authorization": `Bearer ${token}`,
           "Accept": "application/json",
@@ -17927,20 +17941,110 @@ var DatabaseStorage = class {
     return result.rowCount !== null && result.rowCount > 0;
   }
   // Product operations
-  async getProducts(limit, offset) {
-    const baseQuery = getDb2().select().from(products).orderBy(desc(products.createdAt));
-    if (limit !== void 0 && offset !== void 0) {
-      return await baseQuery.limit(limit).offset(offset);
-    } else if (limit !== void 0) {
-      return await baseQuery.limit(limit);
-    } else if (offset !== void 0) {
-      return await baseQuery.offset(offset);
+  async getProducts(limit, offset, filters) {
+    let query = getDb2().select().from(products).$dynamic();
+    const conditions = [];
+    if (filters) {
+      if (filters.category) {
+        const [category] = await getDb2().select().from(categories).where(eq(categories.slug, filters.category));
+        if (category) {
+          conditions.push(eq(products.categoryId, category.id));
+        } else {
+          return [];
+        }
+      }
+      if (filters.minPrice !== void 0) {
+        conditions.push(gte(products.price, filters.minPrice));
+      }
+      if (filters.maxPrice !== void 0) {
+        conditions.push(lte(products.price, filters.maxPrice));
+      }
+      if (filters.search) {
+        const searchTerm = `%${filters.search}%`;
+        conditions.push(or(
+          ilike(products.name, searchTerm),
+          ilike(products.description, searchTerm)
+        ));
+      }
+      if (filters.dietary && filters.dietary.length > 0) {
+        for (const option of filters.dietary) {
+          conditions.push(sql`${products.dietaryOptions} @> ${JSON.stringify([option])}`);
+        }
+      }
     }
-    return await baseQuery;
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    if (filters?.sort) {
+      switch (filters.sort) {
+        case "price-low":
+          query = query.orderBy(asc(products.price));
+          break;
+        case "price-high":
+          query = query.orderBy(desc(products.price));
+          break;
+        case "newest":
+          query = query.orderBy(desc(products.createdAt));
+          break;
+        case "bestselling":
+          query = query.orderBy(desc(products.isBestseller), desc(products.createdAt));
+          break;
+        case "featured":
+        default:
+          query = query.orderBy(desc(products.featured), desc(products.createdAt));
+          break;
+      }
+    } else {
+      query = query.orderBy(desc(products.createdAt));
+    }
+    if (limit !== void 0 && offset !== void 0) {
+      query = query.limit(limit).offset(offset);
+    } else if (limit !== void 0) {
+      query = query.limit(limit);
+    } else if (offset !== void 0) {
+      query = query.offset(offset);
+    }
+    return await query;
   }
-  async getProductsCount() {
-    const result = await getDb2().select({ count: products.id }).from(products);
-    return result.length;
+  async getProductsCount(filters) {
+    let query = getDb2().select({ count: sql`count(*)` }).from(products).$dynamic();
+    const conditions = [];
+    if (filters) {
+      if (filters.category) {
+        const [category] = await getDb2().select().from(categories).where(eq(categories.slug, filters.category));
+        if (category) {
+          conditions.push(eq(products.categoryId, category.id));
+        } else {
+          return 0;
+        }
+      }
+      if (filters.minPrice !== void 0) {
+        conditions.push(gte(products.price, filters.minPrice));
+      }
+      if (filters.maxPrice !== void 0) {
+        conditions.push(lte(products.price, filters.maxPrice));
+      }
+      if (filters.search) {
+        const searchTerm = `%${filters.search}%`;
+        conditions.push(or(
+          ilike(products.name, searchTerm),
+          ilike(products.description, searchTerm)
+        ));
+      }
+      if (filters.dietary && filters.dietary.length > 0) {
+        for (const option of filters.dietary) {
+          conditions.push(sql`${products.dietaryOptions} @> ${JSON.stringify([option])}`);
+        }
+      }
+    }
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    const result = await query;
+    return Number(result[0]?.count || 0);
   }
   async getProductById(id) {
     const [product] = await getDb2().select().from(products).where(eq(products.id, id));
@@ -18040,6 +18144,14 @@ var DatabaseStorage = class {
   }
   async updateOrderStatus(id, status) {
     const [updatedOrder] = await getDb2().update(orders).set({ status }).where(eq(orders.id, id)).returning();
+    return updatedOrder;
+  }
+  async updateOrderPathaoInfo(id, info) {
+    const [updatedOrder] = await getDb2().update(orders).set({
+      pathaoConsignmentId: info.consignmentId,
+      pathaoMerchantOrderId: info.merchantOrderId,
+      pathaoStatus: info.status
+    }).where(eq(orders.id, id)).returning();
     return updatedOrder;
   }
   // Order Item operations
@@ -18210,6 +18322,58 @@ var DatabaseStorage = class {
       return updatedPurchase;
     });
   }
+  async getSalesReport(startDate, endDate) {
+    return await getDb2().select({
+      date: sql`DATE(created_at)`.as("date"),
+      count: sql`count(*)`.mapWith(Number).as("count"),
+      total: sql`sum(total)`.mapWith(Number).as("total")
+    }).from(orders).where(and(
+      gte(orders.createdAt, startDate),
+      lte(orders.createdAt, endDate)
+    )).groupBy(sql`DATE(created_at)`).orderBy(sql`DATE(created_at)`);
+  }
+  async getPurchaseReport(startDate, endDate) {
+    return await getDb2().select({
+      date: sql`DATE(date)`.as("date"),
+      count: sql`count(*)`.mapWith(Number).as("count"),
+      total: sql`sum(total_amount)`.mapWith(Number).as("total")
+    }).from(purchases).where(and(
+      gte(purchases.date, startDate),
+      lte(purchases.date, endDate)
+    )).groupBy(sql`DATE(date)`).orderBy(sql`DATE(date)`);
+  }
+  async getStockReport() {
+    const lowStockItems = await getDb2().select().from(products).where(lte(products.stock, products.lowStockThreshold)).orderBy(asc(products.stock));
+    const [result] = await getDb2().select({
+      totalValue: sql`sum(${products.price} * ${products.stock})`.mapWith(Number)
+    }).from(products);
+    return {
+      lowStockItems,
+      totalValue: result?.totalValue || 0
+    };
+  }
+  async getSalesDetails(startDate, endDate) {
+    return await getDb2().select().from(orders).where(and(
+      gte(orders.createdAt, startDate),
+      lte(orders.createdAt, endDate)
+    )).orderBy(desc(orders.createdAt));
+  }
+  async getPurchaseDetails(startDate, endDate) {
+    return await getDb2().select().from(purchases).where(and(
+      gte(purchases.date, startDate),
+      lte(purchases.date, endDate)
+    )).orderBy(desc(purchases.date));
+  }
+  async getStockDetails() {
+    const result = await getDb2().select({
+      product: products,
+      category: categories
+    }).from(products).innerJoin(categories, eq(products.categoryId, categories.id)).orderBy(asc(products.name));
+    return result.map(({ product, category }) => ({
+      ...product,
+      category
+    }));
+  }
 };
 
 // server/storage.ts
@@ -18285,8 +18449,43 @@ var MemStorage = class {
     return this.categories.delete(id);
   }
   // Product methods
-  async getProducts(limit, offset) {
-    const allProducts = Array.from(this.products.values());
+  async getProducts(limit, offset, filters) {
+    let allProducts = Array.from(this.products.values());
+    if (filters) {
+      if (filters.category) {
+        const category = await this.getCategoryBySlug(filters.category);
+        if (category) {
+          allProducts = allProducts.filter((p) => p.categoryId === category.id);
+        }
+      }
+      if (filters.minPrice !== void 0) {
+        allProducts = allProducts.filter((p) => (p.price || 0) >= filters.minPrice);
+      }
+      if (filters.maxPrice !== void 0) {
+        allProducts = allProducts.filter((p) => (p.price || 0) <= filters.maxPrice);
+      }
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        allProducts = allProducts.filter(
+          (p) => (p.name?.toLowerCase() || "").includes(searchLower) || (p.description?.toLowerCase() || "").includes(searchLower)
+        );
+      }
+      if (filters.dietary && filters.dietary.length > 0) {
+        allProducts = allProducts.filter((p) => {
+          let productOptions = [];
+          if (Array.isArray(p.dietaryOptions)) {
+            productOptions = p.dietaryOptions;
+          } else if (typeof p.dietaryOptions === "string") {
+            try {
+              productOptions = JSON.parse(p.dietaryOptions);
+            } catch (e) {
+              productOptions = [];
+            }
+          }
+          return filters.dietary.every((option) => productOptions.includes(option));
+        });
+      }
+    }
     if (offset !== void 0 && limit !== void 0) {
       return allProducts.slice(offset, offset + limit);
     } else if (limit !== void 0) {
@@ -18296,8 +18495,44 @@ var MemStorage = class {
     }
     return allProducts;
   }
-  async getProductsCount() {
-    return this.products.size;
+  async getProductsCount(filters) {
+    let allProducts = Array.from(this.products.values());
+    if (filters) {
+      if (filters.category) {
+        const category = await this.getCategoryBySlug(filters.category);
+        if (category) {
+          allProducts = allProducts.filter((p) => p.categoryId === category.id);
+        }
+      }
+      if (filters.minPrice !== void 0) {
+        allProducts = allProducts.filter((p) => (p.price || 0) >= filters.minPrice);
+      }
+      if (filters.maxPrice !== void 0) {
+        allProducts = allProducts.filter((p) => (p.price || 0) <= filters.maxPrice);
+      }
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        allProducts = allProducts.filter(
+          (p) => (p.name?.toLowerCase() || "").includes(searchLower) || (p.description?.toLowerCase() || "").includes(searchLower)
+        );
+      }
+      if (filters.dietary && filters.dietary.length > 0) {
+        allProducts = allProducts.filter((p) => {
+          let productOptions = [];
+          if (Array.isArray(p.dietaryOptions)) {
+            productOptions = p.dietaryOptions;
+          } else if (typeof p.dietaryOptions === "string") {
+            try {
+              productOptions = JSON.parse(p.dietaryOptions);
+            } catch (e) {
+              productOptions = [];
+            }
+          }
+          return filters.dietary.every((option) => productOptions.includes(option));
+        });
+      }
+    }
+    return allProducts.length;
   }
   async getProductById(id) {
     return this.products.get(id);
@@ -18393,6 +18628,18 @@ var MemStorage = class {
     const order = this.orders.get(id);
     if (!order) return void 0;
     const updatedOrder = { ...order, status };
+    this.orders.set(id, updatedOrder);
+    return updatedOrder;
+  }
+  async updateOrderPathaoInfo(id, info) {
+    const order = this.orders.get(id);
+    if (!order) return void 0;
+    const updatedOrder = {
+      ...order,
+      pathaoConsignmentId: info.consignmentId,
+      pathaoMerchantOrderId: info.merchantOrderId,
+      pathaoStatus: info.status
+    };
     this.orders.set(id, updatedOrder);
     return updatedOrder;
   }
@@ -18543,6 +18790,33 @@ var MemStorage = class {
     };
     this.settings.set(id, newSetting);
     return newSetting;
+  }
+  async getSalesReport(startDate, endDate) {
+    return [];
+  }
+  async getPurchaseReport(startDate, endDate) {
+    return [];
+  }
+  async getStockReport() {
+    const products2 = Array.from(this.products.values());
+    const lowStockItems = products2.filter((p) => p.stock <= p.lowStockThreshold);
+    const totalValue = products2.reduce((sum, p) => sum + p.price * p.stock, 0);
+    return { lowStockItems, totalValue };
+  }
+  async getSalesDetails(startDate, endDate) {
+    return Array.from(this.orders.values());
+  }
+  async getPurchaseDetails(startDate, endDate) {
+    return Array.from(this.purchases.values());
+  }
+  async getStockDetails() {
+    const products2 = Array.from(this.products.values());
+    const categories2 = Array.from(this.categories.values());
+    const catMap = new Map(categories2.map((c) => [c.id, c]));
+    return products2.map((p) => ({
+      ...p,
+      category: catMap.get(p.categoryId)
+    }));
   }
 };
 var storageInstance = null;
@@ -18842,6 +19116,55 @@ async function registerRoutes(app2) {
       res.status(500).json({ message: "Failed to update settings" });
     }
   });
+  app2.get("/api/admin/reports/sales", checkAuth, async (req, res) => {
+    try {
+      const startDate = req.query.startDate ? new Date(req.query.startDate) : new Date((/* @__PURE__ */ new Date()).setMonth((/* @__PURE__ */ new Date()).getMonth() - 1));
+      const endDate = req.query.endDate ? new Date(req.query.endDate) : /* @__PURE__ */ new Date();
+      const type = req.query.type;
+      if (type === "details") {
+        const report = await storage.getSalesDetails(startDate, endDate);
+        res.json(report);
+      } else {
+        const report = await storage.getSalesReport(startDate, endDate);
+        res.json(report);
+      }
+    } catch (error) {
+      console.error("Sales Report Error:", error);
+      res.status(500).json({ message: "Failed to generate sales report" });
+    }
+  });
+  app2.get("/api/admin/reports/purchases", checkAuth, async (req, res) => {
+    try {
+      const startDate = req.query.startDate ? new Date(req.query.startDate) : new Date((/* @__PURE__ */ new Date()).setMonth((/* @__PURE__ */ new Date()).getMonth() - 1));
+      const endDate = req.query.endDate ? new Date(req.query.endDate) : /* @__PURE__ */ new Date();
+      const type = req.query.type;
+      if (type === "details") {
+        const report = await storage.getPurchaseDetails(startDate, endDate);
+        res.json(report);
+      } else {
+        const report = await storage.getPurchaseReport(startDate, endDate);
+        res.json(report);
+      }
+    } catch (error) {
+      console.error("Purchase Report Error:", error);
+      res.status(500).json({ message: "Failed to generate purchase report" });
+    }
+  });
+  app2.get("/api/admin/reports/stock", checkAuth, async (req, res) => {
+    try {
+      const type = req.query.type;
+      if (type === "details") {
+        const report = await storage.getStockDetails();
+        res.json(report);
+      } else {
+        const report = await storage.getStockReport();
+        res.json(report);
+      }
+    } catch (error) {
+      console.error("Stock Report Error:", error);
+      res.status(500).json({ message: "Failed to generate stock report" });
+    }
+  });
   app2.get("/api/categories", async (_req, res) => {
     try {
       const categories2 = await storage.getCategories();
@@ -18865,15 +19188,45 @@ async function registerRoutes(app2) {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit) : void 0;
       const offset = req.query.offset ? parseInt(req.query.offset) : void 0;
-      const products2 = await storage.getProducts(limit, offset);
+      const category = req.query.category;
+      const search = req.query.q;
+      let minPrice;
+      let maxPrice;
+      if (req.query.price) {
+        const priceParam = req.query.price;
+        const ranges = priceParam.split(",");
+        let globalMin = Infinity;
+        let globalMax = -Infinity;
+        ranges.forEach((range) => {
+          const [min, max] = range.split("-").map(Number);
+          if (!isNaN(min) && min < globalMin) globalMin = min;
+          if (!isNaN(max) && max > globalMax) globalMax = max;
+        });
+        if (globalMin !== Infinity) minPrice = globalMin;
+        if (globalMax !== -Infinity) maxPrice = globalMax;
+      }
+      let dietary;
+      if (req.query.dietary) {
+        dietary = req.query.dietary.split(",");
+      }
+      const sort = req.query.sort;
+      const filters = {
+        category,
+        search,
+        minPrice,
+        maxPrice,
+        dietary,
+        sort
+      };
+      const products2 = await storage.getProducts(limit, offset, filters);
       const categories2 = await storage.getCategories();
-      const total = await storage.getProductsCount();
+      const total = await storage.getProductsCount(filters);
       const categoryMap = new Map(categories2.map((c) => [c.id, c]));
       const productsWithCategory = products2.map((product) => {
-        const category = categoryMap.get(product.categoryId);
+        const category2 = categoryMap.get(product.categoryId);
         return {
           ...product,
-          category: category || { id: 0, name: "Unknown", slug: "unknown" }
+          category: category2 || { id: 0, name: "Unknown", slug: "unknown" }
         };
       });
       res.json({
@@ -19732,8 +20085,10 @@ async function registerRoutes(app2) {
         storeId: parseInt(storeId),
         recipientCity: parseInt(recipientCity),
         recipientZone: parseInt(recipientZone),
-        deliveryType: deliveryType || "normal",
-        itemType: itemType || "parcel",
+        deliveryType: deliveryType === "normal" ? 48 : 48,
+        // Default to 48 (Standard)
+        itemType: itemType === "document" ? 2 : 1,
+        // Default to 1 (Parcel)
         item_weight: parseFloat(itemWeight) || 0.5
       });
       res.json(price);
@@ -19754,13 +20109,13 @@ async function registerRoutes(app2) {
         storeId: parseInt(orderData.storeId),
         merchantOrderId: orderData.merchantOrderId || `ORD-${Date.now()}`,
         recipientName: orderData.recipientName,
-        recipientPhone: orderData.recipientPhone,
+        recipientPhone: orderData.recipientPhone.replace(/\D/g, ""),
         recipientAddress: orderData.recipientAddress,
         recipientCity: parseInt(orderData.recipientCity),
         recipientZone: parseInt(orderData.recipientZone),
         recipientArea: parseInt(orderData.recipientArea),
-        deliveryType: orderData.deliveryType || "normal",
-        itemType: orderData.itemType || "parcel",
+        deliveryType: orderData.deliveryType === "normal" ? 48 : 48,
+        itemType: orderData.itemType === "document" ? 2 : 1,
         itemQuantity: parseInt(orderData.itemQuantity) || 1,
         itemWeight: parseFloat(orderData.itemWeight) || 0.5,
         itemDescription: orderData.itemDescription || "Bakery Items",
@@ -19786,6 +20141,93 @@ async function registerRoutes(app2) {
     } catch (error) {
       console.error("Pathao tracking error:", error);
       res.status(500).json({ message: "Failed to track order", error: error.message });
+    }
+  });
+  app2.post("/api/admin/orders/:id/pathao", checkAuth, async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      if (isNaN(orderId)) return res.status(400).json({ message: "Invalid order ID" });
+      const orderData = req.body;
+      const order = await storage.getOrderById(orderId);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+      const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
+      const pathao = getPathaoService2();
+      const getPhone = (p) => {
+        const d = p.replace(/\D/g, "");
+        if (d.startsWith("880")) return d.substring(2);
+        if (d.startsWith("88")) return "0" + d.substring(2);
+        return d;
+      };
+      const phoneToUse = orderData.recipientPhone || order.customerPhone;
+      const processedPhone = getPhone(phoneToUse);
+      console.log(`[Pathao Debug] Using Phone: "${phoneToUse}", Processed: "${processedPhone}"`);
+      const result = await pathao.createOrder({
+        storeId: parseInt(orderData.storeId),
+        merchantOrderId: `ORD-${orderId}`,
+        // Use our Order ID
+        recipientName: order.customerName,
+        recipientPhone: processedPhone,
+        recipientAddress: order.address,
+        recipientCity: parseInt(orderData.recipientCity),
+        recipientZone: parseInt(orderData.recipientZone),
+        recipientArea: parseInt(orderData.recipientArea),
+        deliveryType: 48,
+        itemType: 2,
+        // 2 is Parcel, 1 is Document (which is restricted)
+        itemQuantity: parseInt(orderData.itemQuantity) || 1,
+        itemWeight: parseFloat(orderData.itemWeight) || 0.5,
+        itemDescription: orderData.itemDescription || `Order #${orderId}`,
+        amountToCollect: parseFloat(orderData.amountToCollect) || (order.paymentMethod === "cod" ? order.total : 0),
+        specialInstruction: orderData.specialInstruction || ""
+      });
+      if (result?.data?.consignment_id) {
+        await storage.updateOrderPathaoInfo(orderId, {
+          consignmentId: result.data.consignment_id,
+          merchantOrderId: result.data.merchant_order_id,
+          status: result.data.order_status
+        });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Pathao send error:", error);
+      res.status(500).json({ message: "Failed to send to Pathao", error: error.message });
+    }
+  });
+  app2.post("/api/admin/orders/pathao/sync", checkAuth, async (_req, res) => {
+    try {
+      const orders2 = await storage.getOrders();
+      const activePathaoOrders = orders2.filter(
+        (o) => o.pathaoConsignmentId && o.pathaoStatus !== "Delivered" && o.pathaoStatus !== "Cancelled"
+      );
+      const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
+      const pathao = getPathaoService2();
+      const results = [];
+      for (const order of activePathaoOrders) {
+        if (!order.pathaoConsignmentId) continue;
+        try {
+          const trackingData = await pathao.trackOrder(order.pathaoConsignmentId);
+          if (trackingData && trackingData.order_status) {
+            const currentStatus = trackingData.order_status;
+            if (currentStatus !== order.pathaoStatus) {
+              await storage.updateOrderPathaoInfo(order.id, {
+                consignmentId: order.pathaoConsignmentId,
+                merchantOrderId: order.pathaoMerchantOrderId || "",
+                status: currentStatus
+              });
+              results.push({ id: order.id, status: currentStatus, updated: true });
+            } else {
+              results.push({ id: order.id, status: currentStatus, updated: false });
+            }
+          }
+        } catch (e) {
+          console.error(`Failed to sync order ${order.id}:`, e);
+          results.push({ id: order.id, error: true });
+        }
+      }
+      res.json({ success: true, synced: results.length, details: results });
+    } catch (error) {
+      console.error("Pathao sync error:", error);
+      res.status(500).json({ message: "Failed to sync Pathao statuses", error: error.message });
     }
   });
   app2.post("/api/contact", async (req, res) => {

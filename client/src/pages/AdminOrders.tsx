@@ -33,7 +33,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, Eye, ChevronLeft, ChevronRight, Calendar, Package, ShoppingCart, DollarSign } from 'lucide-react';
+import { Search, Filter, Eye, ChevronLeft, ChevronRight, Calendar, Package, ShoppingCart, DollarSign, Truck, MapPin } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -60,6 +61,10 @@ interface Order {
   createdAt: string;
   paymentMethod: string;
   items: OrderItem[];
+  // Pathao Fields
+  pathaoConsignmentId?: string;
+  pathaoMerchantOrderId?: string;
+  pathaoStatus?: string;
 }
 
 // Status badge colors
@@ -88,6 +93,99 @@ export default function AdminOrders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Pathao Integration State
+  const [pathaoDialogOpen, setPathaoDialogOpen] = useState(false);
+  const [isSendingToPathao, setIsSendingToPathao] = useState(false);
+  const [pathaoStores, setPathaoStores] = useState<any[]>([]);
+  const [pathaoCities, setPathaoCities] = useState<any[]>([]);
+  const [pathaoZones, setPathaoZones] = useState<any[]>([]);
+  const [pathaoAreas, setPathaoAreas] = useState<any[]>([]);
+
+  const [pathaoForm, setPathaoForm] = useState({
+    storeId: '',
+    cityId: '',
+    zoneId: '',
+    areaId: '',
+    weight: '0.5',
+    instruction: '',
+    phoneNumber: ''
+  });
+
+  // Fetch Pathao Data
+  const fetchPathaoData = async () => {
+    try {
+      const [storesRes, citiesRes] = await Promise.all([
+        fetch('/api/pathao/stores').then(r => r.json()),
+        fetch('/api/pathao/cities').then(r => r.json())
+      ]);
+      setPathaoStores(storesRes || []);
+      setPathaoCities(citiesRes || []);
+
+      // Set default store if available
+      if (storesRes && storesRes.length > 0) {
+        setPathaoForm(prev => ({ ...prev, storeId: storesRes[0].store_id.toString() }));
+      }
+    } catch (e) {
+      console.error("Failed to fetch Pathao data", e);
+      toast({ title: "Error", description: "Failed to load Pathao location data", variant: "destructive" });
+    }
+  };
+
+  const handleCityChange = async (cityId: string) => {
+    setPathaoForm(prev => ({ ...prev, cityId, zoneId: '', areaId: '' }));
+    try {
+      const zones = await fetch(`/api/pathao/zones/${cityId}`).then(r => r.json());
+      setPathaoZones(zones || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleZoneChange = async (zoneId: string) => {
+    setPathaoForm(prev => ({ ...prev, zoneId, areaId: '' }));
+    try {
+      const areas = await fetch(`/api/pathao/areas/${zoneId}`).then(r => r.json());
+      setPathaoAreas(areas || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const sendToPathao = async () => {
+    if (!selectedOrder) return;
+    setIsSendingToPathao(true);
+    try {
+      const response = await fetch(`/api/admin/orders/${selectedOrder.id}/pathao`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId: pathaoForm.storeId,
+          recipientCity: pathaoForm.cityId,
+          recipientZone: pathaoForm.zoneId,
+          recipientArea: pathaoForm.areaId,
+          itemWeight: pathaoForm.weight,
+          itemType: 'parcel', // Force parcel for now as documents might be restricted
+          specialInstruction: pathaoForm.instruction,
+          recipientPhone: pathaoForm.phoneNumber,
+          itemQuantity: selectedOrder.items?.reduce((s, i) => s + i.quantity, 0) || 1,
+          amountToCollect: selectedOrder.paymentMethod === 'cod' ? selectedOrder.total : 0
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "Failed to send");
+
+      toast({ title: "Success", description: "Order sent to Pathao successfully!" });
+      setPathaoDialogOpen(false);
+      // Refresh orders
+      window.location.reload();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSendingToPathao(false);
+    }
+  };
 
   // Fetch orders data
   const { data: orders = [], isLoading } = useQuery<Order[]>({
@@ -603,11 +701,152 @@ export default function AdminOrders() {
                   Download PDF
                 </Button>
               </div>
+
+              {/* Pathao Actions */}
+              <div className="pt-4 border-t">
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-red-500" />
+                  Pathao Delivery
+                </h3>
+                {selectedOrder.pathaoConsignmentId ? (
+                  <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">Consignment ID:</span>
+                      <span className="font-mono font-medium">{selectedOrder.pathaoConsignmentId}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm text-gray-600">Status:</span>
+                      <Badge variant="secondary">{selectedOrder.pathaoStatus || 'Unknown'}</Badge>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/pathao/track/${selectedOrder.pathaoConsignmentId}`);
+                          const data = await res.json();
+                          if (data && data.data && data.data.order_status) {
+                            toast({ title: "Tracking Update", description: `Current Status: ${data.data.order_status}` });
+                          } else {
+                            toast({ title: "Tracking", description: "No status update available" });
+                          }
+                        } catch (e) { toast({ title: "Error", description: "Failed to track", variant: "destructive" }); }
+                      }}
+                    >
+                      Check Status
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 p-4 rounded-lg text-center">
+                    <p className="text-sm text-gray-500 mb-3">Order has not been sent to Pathao yet.</p>
+                    <Button
+                      onClick={() => {
+                        fetchPathaoData();
+                        setPathaoDialogOpen(true);
+                      }}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      Send with Pathao
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+
+      <PathaoDialog
+        open={pathaoDialogOpen}
+        onOpenChange={setPathaoDialogOpen}
+        formData={pathaoForm}
+        setFormData={setPathaoForm}
+        stores={pathaoStores}
+        cities={pathaoCities}
+        zones={pathaoZones}
+        areas={pathaoAreas}
+        onCityChange={handleCityChange}
+        onZoneChange={handleZoneChange}
+        onSend={sendToPathao}
+        loading={isSendingToPathao}
+        order={selectedOrder}
+      />
+    </AdminLayout >
+  );
+}
+
+function PathaoDialog({ open, onOpenChange, formData, setFormData, stores, cities, zones, areas, onCityChange, onZoneChange, onSend, loading, order }: any) {
+  if (!order) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Send to Pathao Courier</DialogTitle>
+          <DialogDescription>Create a delivery request for Order #{order.id}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Store</label>
+            <Select value={formData.storeId} onValueChange={(v) => setFormData({ ...formData, storeId: v })}>
+              <SelectTrigger><SelectValue placeholder="Select Store" /></SelectTrigger>
+              <SelectContent>{stores.map((s: any) => <SelectItem key={s.store_id} value={s.store_id.toString()}>{s.store_name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">City</label>
+            <Select value={formData.cityId} onValueChange={onCityChange}>
+              <SelectTrigger><SelectValue placeholder="Select City" /></SelectTrigger>
+              <SelectContent>{cities.map((c: any) => <SelectItem key={c.city_id} value={c.city_id.toString()}>{c.city_name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Recipient Phone</label>
+            <Input value={formData.phoneNumber} onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })} />
+          </div>
+          {zones.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Zone</label>
+              <Select value={formData.zoneId} onValueChange={onZoneChange}>
+                <SelectTrigger><SelectValue placeholder="Select Zone" /></SelectTrigger>
+                <SelectContent>{zones.map((z: any) => <SelectItem key={z.zone_id} value={z.zone_id.toString()}>{z.zone_name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          )}
+          {zones.length > 0 && areas.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Area</label>
+              <Select value={formData.areaId} onValueChange={(v) => setFormData({ ...formData, areaId: v })}>
+                <SelectTrigger><SelectValue placeholder="Select Area" /></SelectTrigger>
+                <SelectContent>{areas.map((a: any) => <SelectItem key={a.area_id} value={a.area_id.toString()}>{a.area_name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Weight (kg)</label>
+              <Input type="number" step="0.5" value={formData.weight} onChange={e => setFormData({ ...formData, weight: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Collect Amount</label>
+              <Input disabled value={order.paymentMethod === 'cod' ? order.total : 0} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Special Instruction</label>
+            <Input placeholder="e.g. Handle with care" value={formData.instruction} onChange={e => setFormData({ ...formData, instruction: e.target.value })} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={onSend} disabled={loading || !formData.cityId || !formData.zoneId || !formData.areaId}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Confirm Send
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

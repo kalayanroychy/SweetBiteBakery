@@ -17,6 +17,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { CreditCard, BanknoteIcon, CheckCircle, CreditCard as CardIcon } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Link } from "wouter";
 
 // Extend order schema with validation rules for Bangladesh
 const checkoutFormSchema = insertOrderSchema.extend({
@@ -27,6 +29,9 @@ const checkoutFormSchema = insertOrderSchema.extend({
   city: z.string().min(2, "City must be at least 2 characters"),
   state: z.string().min(2, "Division/District must be at least 2 characters"),
   zipCode: z.string().min(4, "Postal code must be at least 4 digits"),
+  acceptTerms: z.literal(true, {
+    errorMap: () => ({ message: "You must agree to the Terms, Privacy Policy, and Refund Policy" }),
+  }),
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
@@ -53,7 +58,8 @@ const Checkout = () => {
       state: "Dhaka Division",
       zipCode: "1000",
       paymentMethod: "cash-on-delivery",
-      total: cart.subtotal
+      total: cart.subtotal,
+      acceptTerms: false,
     }
   });
 
@@ -273,6 +279,29 @@ const Checkout = () => {
                               </RadioGroup>
                             </FormControl>
                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="acceptTerms"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                I agree to the{" "}
+                                <a href="/terms" target="_blank" className="text-primary hover:underline">Terms & Conditions</a>,{" "}
+                                <a href="/privacy-policy" target="_blank" className="text-primary hover:underline">Privacy Policy</a>, and{" "}
+                                <a href="/refund-policy" target="_blank" className="text-primary hover:underline">Return & Refund Policy</a>.
+                              </FormLabel>
+                              <FormMessage />
+                            </div>
                           </FormItem>
                         )}
                       />

@@ -217,16 +217,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dietary = (req.query.dietary as string).split(',');
       }
 
-      // Parse sort parameter
-      const sort = req.query.sort as string | undefined;
-
       const filters = {
         category,
         search,
         minPrice,
         maxPrice,
-        dietary,
-        sort
+        dietary
       };
 
       const products = await storage.getProducts(limit, offset, filters);

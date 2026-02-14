@@ -184,6 +184,9 @@ class PathaoService {
         }
 
         const postData = options.body ? JSON.stringify(options.body) : undefined;
+        if (postData) {
+            console.log('[Pathao Request Body]:', postData);
+        }
         const headers: any = {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json',
@@ -240,8 +243,8 @@ class PathaoService {
         storeId: number;
         recipientCity: number;
         recipientZone: number;
-        deliveryType: "48" | "normal";
-        itemType: "parcel" | "document";
+        deliveryType: number;
+        itemType: number;
         item_weight?: number;
     }): Promise<PathaoPrice> {
         const data = await this.makeRequest("/aladdin/api/v1/merchant/price-plan", {
@@ -274,8 +277,8 @@ class PathaoService {
         recipientCity: number;
         recipientZone: number;
         recipientArea: number;
-        deliveryType: "48" | "normal";
-        itemType: "parcel" | "document";
+        deliveryType: number;
+        itemType: number;
         itemQuantity: number;
         itemWeight: number;
         itemDescription: string;

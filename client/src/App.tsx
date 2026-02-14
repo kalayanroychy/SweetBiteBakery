@@ -33,11 +33,18 @@ import Login from "@/pages/Login";
 import UserPanel from "@/pages/UserPanel";
 import Layout from "@/components/layout/Layout";
 import AdminLayout from "@/components/layout/AdminLayout";
+import AdminReports from "@/pages/admin/AdminReports";
 
 import HomeVariant1 from "@/pages/HomeVariant1";
 import HomeVariant2 from "@/pages/HomeVariant2";
 import HomeVariant3 from "@/pages/HomeVariant3";
 import HomeVariant4 from "@/pages/HomeVariant4";
+import TermsPage from "@/pages/TermsPage";
+import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
+import RefundPolicyPage from "@/pages/RefundPolicyPage";
+import DeliveryInfoPage from "@/pages/DeliveryInfoPage";
+import ReturnPolicyPage from "@/pages/ReturnPolicyPage";
+import FAQPage from "@/pages/FAQPage";
 
 function Router() {
   return (
@@ -58,6 +65,12 @@ function Router() {
       <Route path="/order-tracking" component={OrderTracking} />
       <Route path="/about" component={AboutUs} />
       <Route path="/contact" component={Contact} />
+      <Route path="/terms" component={TermsPage} />
+      <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/refund-policy" component={RefundPolicyPage} />
+      <Route path="/delivery" component={DeliveryInfoPage} />
+      <Route path="/return-policy" component={ReturnPolicyPage} />
+      <Route path="/faq" component={FAQPage} />
 
       {/* User Authentication Routes */}
       <Route path="/register" component={Register} />
@@ -82,6 +95,7 @@ function Router() {
       <Route path="/admin/purchases/new" component={AdminPurchaseForm} />
       <Route path="/admin/purchases/:id" component={AdminPurchaseForm} />
       <Route path="/admin/inventory" component={AdminInventory} />
+      <Route path="/admin/reports" component={AdminReports} />
 
       {/* Fallback to 404 */}
       <Route component={NotFound} />

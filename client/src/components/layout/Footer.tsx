@@ -11,11 +11,15 @@ const Footer = () => {
           {/* Brand Column */}
           <div className="lg:col-span-4">
             <div className="mb-6">
-              <h2 className="font-heading text-3xl font-bold mb-1 text-white">Probashi Bakery</h2>
-              <p className="text-accent/80 text-sm uppercase tracking-widest font-semibold">Artisan Bakery</p>
+              <img
+                src="/logo.png"
+                alt="Probashi Bakery"
+                className="h-16 w-auto mb-4 object-contain brightness-100"
+              />
+              <p className="text-accent/80 text-sm uppercase tracking-widest font-semibold">Probashi Bakery</p>
             </div>
             <p className="mb-6 text-gray-300 leading-relaxed">
-              Crafting delightful memories with every bite since 2015.
+              Crafting delightful memories with every bite since 1980.
               Our passion is baking happiness using only the finest ingredients
               and traditional recipes passed down through generations.
             </p>
@@ -94,19 +98,25 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <div className="text-gray-300 hover:text-accent hover:translate-x-1 transition-all duration-300 cursor-pointer flex items-center">
-                  <span className="text-xs mr-2">•</span>Delivery Info
-                </div>
+                <Link href="/delivery">
+                  <div className="text-gray-300 hover:text-accent hover:translate-x-1 transition-all duration-300 cursor-pointer flex items-center">
+                    <span className="text-xs mr-2">•</span>Delivery Info
+                  </div>
+                </Link>
               </li>
               <li>
-                <div className="text-gray-300 hover:text-accent hover:translate-x-1 transition-all duration-300 cursor-pointer flex items-center">
-                  <span className="text-xs mr-2">•</span>Return Policy
-                </div>
+                <Link href="/return-policy">
+                  <div className="text-gray-300 hover:text-accent hover:translate-x-1 transition-all duration-300 cursor-pointer flex items-center">
+                    <span className="text-xs mr-2">•</span>Return Policy
+                  </div>
+                </Link>
               </li>
               <li>
-                <div className="text-gray-300 hover:text-accent hover:translate-x-1 transition-all duration-300 cursor-pointer flex items-center">
-                  <span className="text-xs mr-2">•</span>FAQ
-                </div>
+                <Link href="/faq">
+                  <div className="text-gray-300 hover:text-accent hover:translate-x-1 transition-all duration-300 cursor-pointer flex items-center">
+                    <span className="text-xs mr-2">•</span>FAQ
+                  </div>
+                </Link>
               </li>
               <li>
                 <Link href="/contact">
@@ -115,6 +125,28 @@ const Footer = () => {
                   </div>
                 </Link>
               </li>
+              <li>
+                <Link href="/privacy">
+                  <div className="text-gray-300 hover:text-accent hover:translate-x-1 transition-all duration-300 cursor-pointer flex items-center">
+                    <span className="text-xs mr-2">•</span>Privacy Policy
+                  </div>
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms">
+                  <div className="text-gray-300 hover:text-accent hover:translate-x-1 transition-all duration-300 cursor-pointer flex items-center">
+                    <span className="text-xs mr-2">•</span>Terms & Conditions
+                  </div>
+                </Link>
+              </li>
+              <li>
+                <Link href="/refund-policy">
+                  <div className="text-gray-300 hover:text-accent hover:translate-x-1 transition-all duration-300 cursor-pointer flex items-center">
+                    <span className="text-xs mr-2">•</span>Refund Policy
+                  </div>
+                </Link>
+              </li>
+
             </ul>
           </div>
 
@@ -128,7 +160,7 @@ const Footer = () => {
               <input
                 type="email"
                 placeholder="Your email address"
-                className="flex-1 bg-white/10 border border-white/20 px-4 py-3 rounded-l-md focus:outline-none focus:bg-white/20 text-white placeholder:text-gray-400"
+                className="flex-1 bg-white/10 border border-white/20 px-4 py-2 rounded-l-md focus:outline-none focus:bg-white/20 text-white placeholder:text-gray-400"
               />
               <Button className="rounded-l-none bg-accent hover:bg-accent/90 text-primary px-4 py-3 flex items-center">
                 Subscribe <ArrowRight size={16} className="ml-2" />
@@ -151,20 +183,53 @@ const Footer = () => {
             </div>
           </div>
         </div>
+        {/* Payment Banner Section */}
+        <div className="mt-12 pt-4 border-t border-white/10 flex flex-col items-center">
+          <div className="bg-white p-2 rounded-lg">
+            <img
+              src="/Payment_Banner.png"
+              alt="Payment Methods"
+              className="h-auto w-auto max-h-40 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.parentElement!.innerHTML = '<span class="text-xs text-gray-500">Payment methods will appear here</span>';
+              }}
+            />
+          </div>
+        </div>
       </div>
+
+
+
 
       {/* Bottom Bar */}
       <div className="border-t border-white/10 py-6">
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
-          <p>&copy; 1980 - {new Date().getFullYear()} Probashi Bakery Bakery. All rights reserved.</p>
-          <div className="mt-3 md:mt-0 flex space-x-6">
-            <span className="hover:text-accent cursor-pointer transition-colors">Privacy Policy</span>
-            <span className="hover:text-accent cursor-pointer transition-colors">Terms of Service</span>
-            <span className="hover:text-accent cursor-pointer transition-colors">Cookies</span>
+          <div className="text-center md:text-left">
+            <p>&copy; 1980 - {new Date().getFullYear()} Probashi Bakery. All rights reserved.</p>
+            <p className="mt-1 text-xs text-gray-500">Trade License: TRAD/CHTG/022098/2018</p>
+          </div>
+
+          <div className="mt-4 md:mt-0 flex flex-col items-center md:items-end gap-4">
+            <div className="flex space-x-6">
+              <Link href="/privacy-policy">
+                <span className="hover:text-accent cursor-pointer transition-colors">Privacy Policy</span>
+              </Link>
+              <Link href="/terms">
+                <span className="hover:text-accent cursor-pointer transition-colors">Terms & Conditions</span>
+              </Link>
+              <Link href="/return-policy">
+                <span className="hover:text-accent cursor-pointer transition-colors">Return Policy</span>
+              </Link>
+              <Link href="/refund-policy">
+                <span className="hover:text-accent cursor-pointer transition-colors">Refund Policy</span>
+              </Link>
+            </div>
+
           </div>
         </div>
       </div>
-    </footer>
+    </footer >
   );
 };
 

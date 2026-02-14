@@ -18,7 +18,6 @@ export interface ProductFilters {
   maxPrice?: number;
   search?: string;
   dietary?: string[];
-  sort?: string;
 }
 
 export interface IStorage {
