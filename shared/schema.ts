@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, doublePrecision, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, doublePrecision, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -40,7 +40,14 @@ export const products = pgTable("products", {
   stock: integer("stock").notNull().default(0),
   lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  idx_products_category: index("idx_products_category").on(table.categoryId),
+  idx_products_price: index("idx_products_price").on(table.price),
+  idx_products_created_at: index("idx_products_created_at").on(table.createdAt),
+  idx_products_name: index("idx_products_name").on(table.name),
+  idx_products_featured: index("idx_products_featured").on(table.featured),
+  idx_products_bestseller: index("idx_products_bestseller").on(table.isBestseller),
+}));
 
 export const insertProductSchema = createInsertSchema(products).pick({
   name: true,

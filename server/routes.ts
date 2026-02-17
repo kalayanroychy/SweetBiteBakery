@@ -21,6 +21,7 @@ import {
 import { checkAuth, authenticateUser } from "./auth.js";
 import { loadInitialData } from "./loadInitialData.js";
 import { checkDatabaseConnection } from "./db.js";
+import { optimizeImage } from "./utils/image.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Check database connection or initialize storage
@@ -245,10 +246,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
 
-      // Add HTTP caching headers for performance
+      // Disable caching for now to solve stale image issues
       res.set({
-        'Cache-Control': 'public, max-age=300', // 5 minutes
-        'ETag': `W/"products-${total}-${JSON.stringify(filters)}"`,
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       });
 
       res.json({
@@ -652,6 +654,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/products", checkAuth, async (req: Request, res: Response) => {
     try {
       const productData = insertProductSchema.parse(req.body);
+
+      // Optimize main image
+      if (productData.image) {
+        productData.image = await optimizeImage(productData.image);
+      }
+
+      // Optimize images array
+      if (productData.images && Array.isArray(productData.images)) {
+        productData.images = await Promise.all(
+          productData.images.map(img => optimizeImage(img))
+        );
+      }
+
       const product = await storage.createProduct(productData);
       res.status(201).json(product);
     } catch (error) {
@@ -671,7 +686,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const productData = insertProductSchema.partial().parse(req.body);
-      console.log(`Updating product ${id} with:`, productData); // Debug log
+      console.log(`Updating product ${id} with:`, productData.name); // Debug log
+
+      // Optimize main image if present
+      if (productData.image) {
+        productData.image = await optimizeImage(productData.image);
+      }
+
+      // Optimize images array if present
+      if (productData.images && Array.isArray(productData.images)) {
+        productData.images = await Promise.all(
+          productData.images.map(img => optimizeImage(img))
+        );
+      }
+
       const product = await storage.updateProduct(id, productData);
 
       if (!product) {
@@ -710,6 +738,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/categories", checkAuth, async (req: Request, res: Response) => {
     try {
       const categoryData = insertCategorySchema.parse(req.body);
+
+      // Optimize category image if present
+      if (categoryData.image) {
+        categoryData.image = await optimizeImage(categoryData.image);
+      }
+
       const category = await storage.createCategory(categoryData);
       res.status(201).json(category);
     } catch (error) {

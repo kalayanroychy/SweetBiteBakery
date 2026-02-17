@@ -61,7 +61,28 @@ export class DatabaseStorage implements IStorage {
 
   // Product operations
   async getProducts(limit?: number, offset?: number, filters?: ProductFilters): Promise<Product[]> {
-    let query = getDb().select().from(products).$dynamic();
+    // Select only necessary columns for list view (exclude heavy description)
+    let query = getDb().select({
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      price: products.price,
+      image: products.image,
+      images: products.images,
+      categoryId: products.categoryId,
+      featured: products.featured,
+      isBestseller: products.isBestseller,
+      isNew: products.isNew,
+      isPopular: products.isPopular,
+      dietaryOptions: products.dietaryOptions,
+      sizes: products.sizes,
+      colors: products.colors,
+      priceVariations: products.priceVariations,
+      stock: products.stock,
+      lowStockThreshold: products.lowStockThreshold,
+      createdAt: products.createdAt,
+      // Exclude description - not needed for list view
+    }).from(products).$dynamic();
     const conditions = [];
 
     if (filters) {

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { Search } from 'lucide-react';
 import { ProductWithCategory, Category } from '@shared/schema';
 import ProductCard from './ProductCard';
@@ -30,6 +31,7 @@ const ProductGrid = ({
 }: ProductGridProps) => {
   // Local state for search input to avoid triggering fetch on every keystroke
   const [localSearch, setLocalSearch] = useState(queryParams.q || '');
+  const gridRef = useRef<HTMLDivElement>(null);
 
   // Debounce search update
   useEffect(() => {
@@ -71,8 +73,57 @@ const ProductGrid = ({
     setQueryParams(newParams);
   };
 
+  // Virtualization Setup
+  const [columns, setColumns] = useState(6);
+
+  useEffect(() => {
+    const updateColumns = () => {
+      if (window.innerWidth < 768) setColumns(2); // Mobile
+      else if (window.innerWidth < 1024) setColumns(4); // Tablet
+      else setColumns(6); // Desktop
+    };
+
+    updateColumns();
+    window.addEventListener('resize', updateColumns);
+    return () => window.removeEventListener('resize', updateColumns);
+  }, []);
+
+  const rows = useMemo(() => {
+    const result = [];
+    for (let i = 0; i < products.length; i += columns) {
+      result.push(products.slice(i, i + columns));
+    }
+    return result;
+  }, [products, columns]);
+
+  const rowVirtualizer = useWindowVirtualizer({
+    count: rows.length,
+    estimateSize: () => 400, // Approximate height of a row
+    overscan: 5,
+    scrollMargin: gridRef.current?.offsetTop ?? 0,
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+
+  // Infinite Scroll Trigger
+  useEffect(() => {
+    const onScroll = () => {
+      // Check if we're near the bottom of the page
+      if (
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 &&
+        hasNextPage &&
+        !isFetchingNextPage
+      ) {
+        fetchNextPage?.();
+      }
+    };
+
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   return (
-    <div className="w-full lg:pl-8">
+    <div className="w-full lg:pl-8" ref={gridRef}>
       {/* Search, Category, and Sort */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="w-full md:w-auto">
@@ -151,26 +202,53 @@ const ProductGrid = ({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {products.map((product, i) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                priority={i < 4}
-              />
-            ))}
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualItems.map((virtualRow) => {
+              const rowProducts = rows[virtualRow.index];
+              return (
+                <div
+                  key={virtualRow.key}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start - rowVirtualizer.options.scrollMargin}px)`,
+                  }}
+                  className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"
+                >
+                  {rowProducts.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      priority={virtualRow.index === 0}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Load More Button */}
+          {/* Load More Button - kept as backup/indicator */}
           {hasNextPage && (
-            <div className="flex justify-center mt-8">
-              <button
-                onClick={() => fetchNextPage?.()}
-                disabled={isFetchingNextPage || isLoading}
-                className="px-8 py-3 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isFetchingNextPage ? 'Loading...' : 'Load More Products'}
-              </button>
+            <div className="flex justify-center mt-8 py-4">
+              {isFetchingNextPage ? (
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              ) : (
+                <button
+                  onClick={() => fetchNextPage?.()}
+                  className="px-8 py-3 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Load More
+                </button>
+              )}
             </div>
           )}
         </>
