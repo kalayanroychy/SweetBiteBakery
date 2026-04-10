@@ -1,26 +1,68 @@
-import { useEffect, useMemo } from "react";
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, Suspense } from "react";
+import { useSuspenseQuery, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import Layout from "@/components/layout/Layout";
 import ProductGrid from "@/components/products/ProductGrid";
 import { ProductWithCategory, Category } from "@shared/schema";
 import { useQueryState } from "@/hooks/use-query-state";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const Products = () => {
-  const [queryParams, setQueryParams] = useQueryState();
+const ProductSkeleton = () => (
+  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+    {[...Array(6)].map((_, i) => (
+      <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden p-6 animate-pulse">
+        <div className="w-full h-48 bg-gray-200 mb-4"></div>
+        <div className="h-6 bg-gray-200 w-3/4 mb-2"></div>
+        <div className="h-4 bg-gray-200 w-full mb-4"></div>
+        <div className="h-4 bg-gray-200 w-5/6 mb-4"></div>
+        <div className="flex justify-between items-center">
+          <div className="h-6 bg-gray-200 w-20"></div>
+          <div className="h-10 bg-gray-200 w-32 rounded-md"></div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
-  // Fetch products with infinite query for progressive loading
+const CategorySelectorSkeleton = () => (
+  <div className="h-10 w-full md:w-48 bg-gray-200 animate-pulse rounded-md"></div>
+);
+
+const CategorySelectorSuspense = ({ queryParams, onCategoryChange }: { queryParams: any, onCategoryChange: (v: string) => void }) => {
+  const { data: categories } = useSuspenseQuery<Category[]>({
+    queryKey: ['/api/categories'],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return (
+    <Select
+      value={queryParams.category || 'all'}
+      onValueChange={onCategoryChange}
+    >
+      <SelectTrigger className="border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary w-full md:w-48">
+        <SelectValue placeholder="All Categories" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All Categories</SelectItem>
+        {categories.map(category => (
+          <SelectItem key={category.id} value={category.slug}>{category.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+const ProductStream = ({ queryParams, setQueryParams }: { queryParams: any, setQueryParams: (v: any) => void }) => {
+  // Fetch products with suspense infinite query
   const {
     data,
-    isLoading: productsLoading,
-    error: productsError,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useInfiniteQuery({
+  } = useSuspenseInfiniteQuery({
     queryKey: ['/api/products', queryParams],
     queryFn: async ({ pageParam = 0 }) => {
-      const limit = 6; // Changed to 6 to fill one complete row (6 products per row)
+      const limit = 6;
       const offset = pageParam;
 
       const searchParams = new URLSearchParams();
@@ -31,7 +73,6 @@ const Products = () => {
       if (queryParams.price) searchParams.append('price', queryParams.price);
       if (queryParams.q) searchParams.append('q', queryParams.q);
       if (queryParams.dietary) searchParams.append('dietary', queryParams.dietary);
-      // Add sort parameter
       if (queryParams.sort) searchParams.append('sort', queryParams.sort);
 
       const response = await fetch(`/api/products?${searchParams.toString()}`);
@@ -43,21 +84,45 @@ const Products = () => {
       return loadedCount < lastPage.total ? loadedCount : undefined;
     },
     initialPageParam: 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Flatten all pages into single array
   const products = data?.pages.flatMap(page => page.products) || [];
 
-  // Fetch categories for filtering
-  const {
-    data: categories,
-    isLoading: categoriesLoading
-  } = useQuery<Category[]>({
-    queryKey: ['/api/categories'],
-  });
+  const handleCategoryChange = (value: string) => {
+    const newParams = { ...queryParams };
+    if (value === 'all') {
+      delete newParams.category;
+    } else {
+      newParams.category = value;
+    }
+    setQueryParams(newParams);
+  };
+
+  return (
+    <ProductGrid
+      products={products}
+      isLoading={false}
+      error={null}
+      fetchNextPage={fetchNextPage}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
+      queryParams={queryParams}
+      setQueryParams={setQueryParams}
+      categorySelector={
+        <Suspense fallback={<CategorySelectorSkeleton />}>
+          <CategorySelectorSuspense 
+            queryParams={queryParams} 
+            onCategoryChange={handleCategoryChange} 
+          />
+        </Suspense>
+      }
+    />
+  );
+};
+
+const Products = () => {
+  const [queryParams, setQueryParams] = useQueryState();
 
   return (
     <Layout>
@@ -72,24 +137,11 @@ const Products = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h1 className="font-heading text-4xl md:text-5xl font-bold text-primary mb-4">Our Products</h1>
-            {/* <p className="text-text-dark max-w-2xl mx-auto">
-              Browse our delicious selection of freshly baked goods made with love and the finest ingredients.
-            </p> */}
           </div>
 
-          <div>
-            <ProductGrid
-              products={products}
-              isLoading={productsLoading}
-              error={productsError}
-              fetchNextPage={fetchNextPage}
-              hasNextPage={hasNextPage}
-              isFetchingNextPage={isFetchingNextPage}
-              queryParams={queryParams}
-              setQueryParams={setQueryParams}
-              categories={categories || []}
-            />
-          </div>
+          <Suspense fallback={<ProductSkeleton />}>
+            <ProductStream queryParams={queryParams} setQueryParams={setQueryParams} />
+          </Suspense>
         </div>
       </section>
     </Layout>

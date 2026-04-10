@@ -117,11 +117,13 @@ const CheckoutWithPathao = () => {
                     itemWeight: Math.max(estimatedWeight, 0.5), // Minimum 0.5kg
                 });
 
-                setDeliveryCharge(pricing.total_price);
+                // If the calculation returns 0 or missing, use a sensible default
+                const finalCharge = pricing.total_price > 0 ? pricing.total_price : 60;
+                setDeliveryCharge(finalCharge);
 
                 toast({
                     title: "✅ Delivery Charge Calculated",
-                    description: `Delivery fee: ${formatCurrency(pricing.total_price)}`,
+                    description: `Delivery fee: ${formatCurrency(finalCharge)}`,
                 });
             } catch (error) {
                 console.error("Failed to calculate delivery:", error);
@@ -131,7 +133,8 @@ const CheckoutWithPathao = () => {
                     variant: "destructive",
                 });
                 setDeliveryCharge(60); // Fallback charge
-            } finally {
+            }
+ finally {
                 setIsCalculatingPrice(false);
             }
         };
@@ -185,6 +188,12 @@ const CheckoutWithPathao = () => {
             const response = await apiRequest("POST", "/api/orders", orderData);
             const result = await response.json();
             const orderId = result.order.id;
+
+            // If SSLCommerz gateway URL returned, redirect for online payment
+            if (result.gatewayUrl) {
+                window.location.href = result.gatewayUrl;
+                return; // Stop further execution — page will navigate away
+            }
 
             // Step 2: Create Pathao courier order (for Cash on Delivery)
             if (defaultStoreId && data.paymentMethod === "cash") {
@@ -533,7 +542,7 @@ const CheckoutWithPathao = () => {
                                         <div className="pt-4">
                                             <Button
                                                 type="submit"
-                                                className="w-full bg-success hover:bg-success/90 text-white py-6 text-lg font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                                                className="w-full bg-primary text-white hover:bg-primary/90 transition-all py-6 rounded-xl font-medium text-base"
                                                 disabled={isSubmitting || isCalculatingPrice}
                                             >
                                                 {isSubmitting ? (

@@ -22,6 +22,8 @@ import { checkAuth, authenticateUser } from "./auth.js";
 import { loadInitialData } from "./loadInitialData.js";
 import { checkDatabaseConnection } from "./db.js";
 import { optimizeImage } from "./utils/image.js";
+import { isrCache } from "./utils/isr-cache.js";
+
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Check database connection or initialize storage
@@ -164,12 +166,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Categories
   app.get("/api/categories", async (_req: Request, res: Response) => {
     try {
-      const categories = await storage.getCategories();
+      const categories = await isrCache.getData('categories:all', async () => {
+        return await storage.getCategories();
+      });
+      
+      res.set({
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      });
+      
       res.json(categories);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch categories" });
     }
   });
+
 
   app.get("/api/categories/:slug", async (req: Request, res: Response) => {
     try {
@@ -230,35 +240,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sort
       };
 
-      const products = await storage.getProducts(limit, offset, filters);
-      const categories = await storage.getCategories();
-      const total = await storage.getProductsCount(filters);
+      const cacheKey = `products:${JSON.stringify({ limit, offset, filters })}`;
 
-      // Create a map of categories for O(1) lookup
-      const categoryMap = new Map(categories.map(c => [c.id, c]));
+      const result = await isrCache.getData(cacheKey, async () => {
+        const products = await storage.getProducts(limit, offset, filters);
+        const categories = await storage.getCategories();
+        const total = await storage.getProductsCount(filters);
 
-      // Add category information to each product
-      const productsWithCategory = products.map(product => {
-        const category = categoryMap.get(product.categoryId);
+        // Create a map of categories for O(1) lookup
+        const categoryMap = new Map(categories.map(c => [c.id, c]));
+
+        // Add category information to each product
+        const productsWithCategory = products.map(product => {
+          const category = categoryMap.get(product.categoryId);
+          return {
+            ...product,
+            category: category || { id: 0, name: "Unknown", slug: "unknown" }
+          };
+        });
+
         return {
-          ...product,
-          category: category || { id: 0, name: "Unknown", slug: "unknown" }
+          products: productsWithCategory,
+          total,
+          limit,
+          offset
         };
       });
 
-      // Disable caching for now to solve stale image issues
+      // Enable caching with stale-while-revalidate for browsers/CDNs
       res.set({
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       });
 
-      res.json({
-        products: productsWithCategory,
-        total,
-        limit,
-        offset
-      });
+      res.json(result);
+
     } catch (error) {
       console.error("Products API Error:", error);
       res.status(500).json({ message: "Failed to fetch products" });
@@ -267,25 +282,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/products/featured", async (_req: Request, res: Response) => {
     try {
-      const products = await storage.getFeaturedProducts();
-      const categories = await storage.getCategories();
+      const productsWithCategory = await isrCache.getData('products:featured', async () => {
+        const products = await storage.getFeaturedProducts();
+        const categories = await storage.getCategories();
 
-      // Add category information to each product
-      const productsWithCategory = products.map(product => {
-        const category = categories.find(c => c.id === product.categoryId);
-        return {
-          ...product,
-          category: category || { id: 0, name: "Unknown", slug: "unknown" }
-        };
+        // Add category information to each product
+        return products.map(product => {
+          const category = categories.find(c => c.id === product.categoryId);
+          return {
+            ...product,
+            category: category || { id: 0, name: "Unknown", slug: "unknown" }
+          };
+        });
       });
 
       // Add HTTP caching headers for performance
       res.set({
-        'Cache-Control': 'public, max-age=300', // 5 minutes
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
         'ETag': `W/"featured-${productsWithCategory.length}"`,
       });
 
       res.json(productsWithCategory);
+
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch featured products" });
     }
@@ -650,6 +668,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin products list with ISR caching
+  app.get("/api/admin/products", checkAuth, async (req: Request, res: Response) => {
+    try {
+      const productsWithCategory = await isrCache.getData('admin:products:all', async () => {
+        const products = await storage.getProducts();
+        const categories = await storage.getCategories();
+
+        // Create a map of categories for O(1) lookup
+        const categoryMap = new Map(categories.map(c => [c.id, c]));
+
+        // Add category information to each product
+        return products.map(product => {
+          const category = categoryMap.get(product.categoryId);
+          return {
+            ...product,
+            category: category || { id: 0, name: "Unknown", slug: "unknown" }
+          };
+        });
+      }, 60);
+
+      // Add caching headers
+      res.set({
+        'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=120',
+      });
+
+      res.json(productsWithCategory);
+    } catch (error) {
+      console.error("Admin Products API Error:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
   // Protected admin routes
   app.post("/api/admin/products", checkAuth, async (req: Request, res: Response) => {
     try {
@@ -668,7 +718,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const product = await storage.createProduct(productData);
+      
+      // Invalidate products cache
+      isrCache.invalidatePattern('products');
+      
       res.status(201).json(product);
+
     } catch (error) {
       if (error instanceof ZodError) {
         res.status(400).json({ message: "Invalid input", errors: error.errors });
@@ -706,7 +761,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Product not found" });
       }
 
+      // Invalidate products cache
+      isrCache.invalidatePattern('products');
+
       res.json(product);
+
     } catch (error) {
       console.error("Product Update Error:", error); // Debug log
       if (error instanceof ZodError) {
@@ -729,7 +788,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Product not found" });
       }
 
+      // Invalidate products cache
+      isrCache.invalidatePattern('products');
+
       res.json({ success: true });
+
     } catch (error) {
       res.status(500).json({ message: "Failed to delete product" });
     }
@@ -745,7 +808,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const category = await storage.createCategory(categoryData);
+      
+      // Invalidate products cache since categories moved
+      isrCache.invalidatePattern('products');
+      
       res.status(201).json(category);
+
     } catch (error) {
       if (error instanceof ZodError) {
         res.status(400).json({ message: "Invalid input", errors: error.errors });
@@ -919,62 +987,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Dashboard statistics
   app.get("/api/admin/dashboard", checkAuth, async (req: Request, res: Response) => {
     try {
-      // Fetch all necessary data sequentially to prevent connection pool exhaustion
-      const products = await storage.getProducts();
-      const categories = await storage.getCategories();
-      const orders = await storage.getOrders();
+      const dashboardData = await isrCache.getData('admin:dashboard', async () => {
+        // Fetch all necessary data sequentially to prevent connection pool exhaustion
+        const products = await storage.getProducts();
+        const categories = await storage.getCategories();
+        const orders = await storage.getOrders();
 
-      // Calculate total revenue
-      const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+        // Calculate total revenue
+        const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0);
 
-      // Get recent orders (last 10)
-      const recentOrders = orders
-        .sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return dateB - dateA;
-        })
-        .slice(0, 10);
+        // Get recent orders (last 10)
+        const recentOrders = orders
+          .sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          })
+          .slice(0, 10);
 
-      // Calculate products by category
-      const categoryDistribution = categories.map(category => {
-        const count = products.filter(p => p.categoryId === category.id).length;
-        return {
-          name: category.name,
-          count
-        };
-      });
-
-      // Calculate orders by month (last 6 months)
-      const now = new Date();
-      const monthlyOrders = [];
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-        const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
-        const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-
-        const count = orders.filter(order => {
-          if (!order.createdAt) return false;
-          const orderDate = new Date(order.createdAt);
-          return orderDate >= monthStart && orderDate <= monthEnd;
-        }).length;
-
-        monthlyOrders.push({
-          name: monthName,
-          orders: count
+        // Calculate products by category
+        const categoryDistribution = categories.map(category => {
+          const count = products.filter(p => p.categoryId === category.id).length;
+          return {
+            name: category.name,
+            count
+          };
         });
-      }
 
-      res.json({
-        totalProducts: products.length,
-        totalCategories: categories.length,
-        totalOrders: orders.length,
-        totalRevenue,
-        recentOrders,
-        categoryDistribution,
-        monthlyOrders
+        // Calculate orders by month (last 6 months)
+        const now = new Date();
+        const monthlyOrders = [];
+        for (let i = 5; i >= 0; i--) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+          const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+          const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+          const count = orders.filter(order => {
+            if (!order.createdAt) return false;
+            const orderDate = new Date(order.createdAt);
+            return orderDate >= monthStart && orderDate <= monthEnd;
+          }).length;
+
+          monthlyOrders.push({
+            name: monthName,
+            orders: count
+          });
+        }
+
+        return {
+          totalProducts: products.length,
+          totalCategories: categories.length,
+          totalOrders: orders.length,
+          totalRevenue,
+          recentOrders,
+          categoryDistribution,
+          monthlyOrders
+        };
+      }, 60);
+
+      // Add caching headers for browsers/CDNs
+      res.set({
+        'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=120',
       });
+
+      res.json(dashboardData);
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
       res.status(500).json({ message: "Failed to fetch dashboard data" });
@@ -985,35 +1062,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Get all orders (for admin panel)
   app.get("/api/admin/orders", checkAuth, async (req: Request, res: Response) => {
     try {
-      const [orders, products] = await Promise.all([
-        storage.getOrders(),
-        storage.getProducts() // Fetch all products once
-      ]);
+      const ordersWithItems = await isrCache.getData('admin:orders:all', async () => {
+        const [orders, products] = await Promise.all([
+          storage.getOrders(),
+          storage.getProducts() // Fetch all products once
+        ]);
 
-      // Create product lookup map for O(1) access
-      const productMap = new Map(products.map(p => [p.id, p]));
+        // Create product lookup map for O(1) access
+        const productMap = new Map(products.map(p => [p.id, p]));
 
-      // Fetch order items for each order and include product names
-      // We still map over orders to get items, but we avoid the inner product fetch loop
-      const ordersWithItems = await Promise.all(
-        orders.map(async (order) => {
-          const items = await storage.getOrderItems(order.id);
+        // Fetch order items for each order and include product names
+        // We still map over orders to get items, but we avoid the inner product fetch loop
+        return await Promise.all(
+          orders.map(async (order) => {
+            const items = await storage.getOrderItems(order.id);
 
-          // Get product details for each item from map
-          const itemsWithProductNames = items.map((item) => {
-            const product = productMap.get(item.productId);
+            // Get product details for each item from map
+            const itemsWithProductNames = items.map((item) => {
+              const product = productMap.get(item.productId);
+              return {
+                ...item,
+                productName: product?.name || `Product #${item.productId}`
+              };
+            });
+
             return {
-              ...item,
-              productName: product?.name || `Product #${item.productId}`
+              ...order,
+              items: itemsWithProductNames
             };
-          });
+          })
+        );
+      }, 60);
 
-          return {
-            ...order,
-            items: itemsWithProductNames
-          };
-        })
-      );
+      // Add caching headers
+      res.set({
+        'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=120',
+      });
 
       res.json(ordersWithItems);
     } catch (error) {
@@ -1239,7 +1323,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.session.userId || null
       };
 
-      // Create the order
       // Create the order with stock deduction using processOrder
       const items = req.body.items || [];
       const orderItemsData = items.map((item: any) => insertOrderItemSchema.parse({
@@ -1252,6 +1335,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const order = await storage.processOrder(orderWithUser, orderItemsData);
 
+      // ─── SSLCommerz Integration ───────────────────────────────────────────
+      if (orderData.paymentMethod === "credit-card") {
+        const storeId = process.env.STORE_ID;
+        const storePassword = process.env.STORE_PASSWORD;
+        const isLive = process.env.SSLCOMMERZ_MODE === "live";
+        const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
+
+        const sslUrl = isLive
+          ? "https://securepay.sslcommerz.com/gwprocess/v4/api.php"
+          : "https://sandbox.sslcommerz.com/gwprocess/v4/api.php";
+
+        const params = new URLSearchParams({
+          store_id: storeId || "",
+          store_passwd: storePassword || "",
+          total_amount: order.total.toString(),
+          currency: "BDT",
+          tran_id: `SBB-${order.id}-${Date.now()}`,
+          success_url: `${backendUrl}/api/payment/success`,
+          fail_url: `${backendUrl}/api/payment/fail`,
+          cancel_url: `${backendUrl}/api/payment/cancel`,
+          ipn_url: `${backendUrl}/api/payment/ipn`,
+          cus_name: order.customerName,
+          cus_email: order.customerEmail,
+          cus_add1: order.address,
+          cus_city: order.city || "Dhaka",
+          cus_state: order.state || "Dhaka",
+          cus_postcode: order.zipCode || "1000",
+          cus_country: "Bangladesh",
+          cus_phone: order.customerPhone,
+          ship_name: order.customerName,
+          ship_add1: order.address,
+          ship_city: order.city || "Dhaka",
+          ship_state: order.state || "Dhaka",
+          ship_postcode: order.zipCode || "1000",
+          ship_country: "Bangladesh",
+          shipping_method: "Courier",
+          product_name: "Bakery Items",
+          product_category: "Food",
+          product_profile: "general",
+          value_a: order.id.toString(), // Carry order ID through transaction
+        });
+
+        const response = await fetch(sslUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params.toString(),
+        });
+
+        const sslData: any = await response.json();
+
+        if (sslData?.status === "SUCCESS" && sslData?.GatewayPageURL) {
+          return res.status(201).json({ order, gatewayUrl: sslData.GatewayPageURL });
+        } else {
+          console.error("SSLCommerz init failed:", sslData);
+          return res.status(502).json({ message: "Payment gateway initialization failed", sslData });
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       res.status(201).json({ order });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -1263,6 +1405,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+
+  // =================== SSLCOMMERZ PAYMENT CALLBACK ROUTES ===================
+
+  // SSLCommerz: Payment Success
+  app.post("/api/payment/success", async (req: Request, res: Response) => {
+    try {
+      const { val_id, tran_id, value_a, status } = req.body;
+      console.log("[SSLCommerz] Success callback:", req.body);
+
+      const orderId = parseInt(value_a);
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5000";
+
+      if (!isNaN(orderId)) {
+        await storage.updateOrderStatus(orderId, "processing");
+        // Store order info needed for confirmation page in query params
+        // so we can redirect without session
+      }
+
+      return res.redirect(`${frontendUrl}/order-confirmation?ssl=1&order=${orderId}&tran=${tran_id}`);
+    } catch (error) {
+      console.error("[SSLCommerz] Success handler error:", error);
+      res.redirect(`/order-confirmation?ssl=err`);
+    }
+  });
+
+  // SSLCommerz: Payment Fail
+  app.post("/api/payment/fail", async (req: Request, res: Response) => {
+    try {
+      const { value_a } = req.body;
+      console.log("[SSLCommerz] Fail callback:", req.body);
+
+      const orderId = parseInt(value_a);
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5000";
+
+      if (!isNaN(orderId)) {
+        await storage.updateOrderStatus(orderId, "cancelled");
+      }
+
+      return res.redirect(`${frontendUrl}/checkout?ssl=fail&order=${orderId}`);
+    } catch (error) {
+      console.error("[SSLCommerz] Fail handler error:", error);
+      res.redirect(`/checkout?ssl=err`);
+    }
+  });
+
+  // SSLCommerz: Payment Cancel
+  app.post("/api/payment/cancel", async (req: Request, res: Response) => {
+    try {
+      const { value_a } = req.body;
+      console.log("[SSLCommerz] Cancel callback:", req.body);
+
+      const orderId = parseInt(value_a);
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5000";
+
+      if (!isNaN(orderId)) {
+        await storage.updateOrderStatus(orderId, "cancelled");
+      }
+
+      return res.redirect(`${frontendUrl}/checkout?ssl=cancel&order=${orderId}`);
+    } catch (error) {
+      console.error("[SSLCommerz] Cancel handler error:", error);
+      res.redirect(`/checkout?ssl=err`);
+    }
+  });
+
+  // SSLCommerz: IPN (Instant Payment Notification - backend webhook)
+  app.post("/api/payment/ipn", async (req: Request, res: Response) => {
+    try {
+      const { val_id, status, value_a, tran_id } = req.body;
+      console.log("[SSLCommerz] IPN callback:", req.body);
+
+      const orderId = parseInt(value_a);
+
+      if (!isNaN(orderId) && status === "VALID") {
+        // Optionally verify with SSLCommerz validation API here
+        await storage.updateOrderStatus(orderId, "processing");
+        console.log(`[SSLCommerz] IPN: Order ${orderId} marked as processing. TranID: ${tran_id}`);
+      }
+
+      return res.status(200).json({ received: true });
+    } catch (error) {
+      console.error("[SSLCommerz] IPN handler error:", error);
+      res.status(500).json({ error: "IPN handling failed" });
+    }
+  });
+
+  // =================== END SSLCOMMERZ ROUTES ===================
+
 
   app.get("/api/orders/:id", checkAuth, async (req: Request, res: Response) => {
     try {
@@ -1358,13 +1588,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { getPathaoService } = await import("./pathao.js");
       const pathao = getPathaoService();
-      const stores = await pathao.getStores();
+      let stores = await pathao.getStores();
+
+      // Fallback: If no stores are returned from API, use the store ID from .env
+      if (stores.length === 0 && process.env.PATHAO_STORE_ID) {
+        stores = [{
+          store_id: parseInt(process.env.PATHAO_STORE_ID),
+          store_name: "Default Store",
+          store_address: "Address configured in Pathao panel",
+          city_id: 1, // Default to Dhaka
+          zone_id: 1,
+          area_id: 1
+        }];
+      }
+
       res.json(stores);
     } catch (error: any) {
       console.error("Pathao stores error:", error);
       res.status(500).json({ message: "Failed to fetch stores", error: error.message });
     }
   });
+
 
   // Calculate delivery price
   app.post("/api/pathao/calculate-price", async (req: Request, res: Response) => {
@@ -1455,6 +1699,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to track order", error: error.message });
     }
   });
+
+
 
   // Manual Send to Pathao (Admin)
   app.post("/api/admin/orders/:id/pathao", checkAuth, async (req: Request, res: Response) => {

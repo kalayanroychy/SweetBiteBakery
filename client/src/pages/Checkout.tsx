@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Helmet } from "react-helmet";
 import { useForm } from "react-hook-form";
@@ -42,10 +42,12 @@ const Checkout = () => {
   const { cart, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if cart is empty
-  if (cart.items.length === 0) {
-    setLocation("/cart");
-  }
+  // Redirect if cart is empty — must be in useEffect, not inline during render
+  useEffect(() => {
+    if (cart.items.length === 0) {
+      setLocation("/cart");
+    }
+  }, [cart.items.length, setLocation]);
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -307,13 +309,22 @@ const Checkout = () => {
                       />
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-6 sticky bottom-0">
                       <Button
                         type="submit"
-                        className="w-full bg-success hover:bg-success/90 text-white py-6 text-lg font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full border-2 border-primary text-primary hover:bg-primary/5 py-6 text-lg font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
                         disabled={isSubmitting}
                       >
-                        {isSubmitting ? "Processing..." : <>Place Order <CheckCircle size={20} /></>}
+                        {isSubmitting ? (
+                          <span className="flex items-center gap-2">
+                            <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                            Processing...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            Place Order <CheckCircle size={20} />
+                          </span>
+                        )}
                       </Button>
                     </div>
                   </form>

@@ -263,8 +263,9 @@ class PathaoService {
             price: data.data?.price || 0,
             cod_charge: data.data?.cod_charge || 0,
             promo_discount: data.data?.promo_discount || 0,
-            total_price: data.data?.total_fee || 0,
+            total_price: data.data?.final_price || data.data?.total_fee || data.data?.price || 0,
         };
+
     }
 
     // Create order/parcel

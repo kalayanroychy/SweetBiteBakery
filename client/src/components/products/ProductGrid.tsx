@@ -15,7 +15,8 @@ type ProductGridProps = {
   isFetchingNextPage?: boolean;
   queryParams: any; // Using any for now to match the hook return type, but interface is better
   setQueryParams: (params: any) => void;
-  categories: Category[];
+  categories?: Category[];
+  categorySelector?: React.ReactNode;
 };
 
 const ProductGrid = ({
@@ -27,7 +28,8 @@ const ProductGrid = ({
   isFetchingNextPage,
   queryParams,
   setQueryParams,
-  categories
+  categories = [],
+  categorySelector
 }: ProductGridProps) => {
   // Local state for search input to avoid triggering fetch on every keystroke
   const [localSearch, setLocalSearch] = useState(queryParams.q || '');
@@ -141,20 +143,22 @@ const ProductGrid = ({
 
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
           {/* Category Dropdown */}
-          <Select
-            value={queryParams.category || 'all'}
-            onValueChange={handleCategoryChange}
-          >
-            <SelectTrigger className="border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary w-full md:w-48">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map(category => (
-                <SelectItem key={category.id} value={category.slug}>{category.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {categorySelector ? categorySelector : (
+            <Select
+              value={queryParams.category || 'all'}
+              onValueChange={handleCategoryChange}
+            >
+              <SelectTrigger className="border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary w-full md:w-48">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category.id} value={category.slug}>{category.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Sort Dropdown */}
           <Select
@@ -224,11 +228,12 @@ const ProductGrid = ({
                   }}
                   className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"
                 >
-                  {rowProducts.map((product) => (
+                  {rowProducts.map((product, colIndex) => (
                     <ProductCard
                       key={product.id}
                       product={product}
                       priority={virtualRow.index === 0}
+                      animationIndex={virtualRow.index * columns + colIndex}
                     />
                   ))}
                 </div>

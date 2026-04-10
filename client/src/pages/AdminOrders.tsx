@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import AdminLayout from '@/components/layout/AdminLayout';
-import { useQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import {
   Card,
   CardContent,
@@ -33,8 +33,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, Eye, ChevronLeft, ChevronRight, Calendar, Package, ShoppingCart, DollarSign, Truck, MapPin } from 'lucide-react';
-import { Loader2 } from 'lucide-react';
+import { Search, Filter, Eye, ChevronLeft, ChevronRight, Calendar, Package, ShoppingCart, DollarSign, Truck, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -85,7 +84,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-export default function AdminOrders() {
+const OrdersContent = () => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -187,10 +186,11 @@ export default function AdminOrders() {
     }
   };
 
-  // Fetch orders data
-  const { data: orders = [], isLoading } = useQuery<Order[]>({
+  // Fetch orders data with ISR-like revalidation
+  const { data: orders = [] } = useSuspenseQuery<Order[]>({
     queryKey: ['/api/admin/orders'],
-    staleTime: 60000, // 1 minute
+    staleTime: 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   // Date filtering logic
@@ -254,7 +254,7 @@ export default function AdminOrders() {
   const orderCount = filteredOrders.length;
 
   return (
-    <AdminLayout>
+    <>
       <div className="p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-heading font-bold text-gray-900">Orders</h1>
@@ -371,12 +371,7 @@ export default function AdminOrders() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="py-10 text-center">
-                <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
-                <p className="mt-2 text-sm text-gray-500">Loading orders...</p>
-              </div>
-            ) : filteredOrders.length === 0 ? (
+            {filteredOrders.length === 0 ? (
               <div className="text-center py-10">
                 <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <p className="text-gray-500">No orders found matching your criteria</p>
@@ -673,7 +668,7 @@ export default function AdminOrders() {
                 <h3 className="font-semibold mb-2">Payment Method</h3>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <span className="font-medium capitalize">
-                    {selectedOrder.paymentMethod === 'cash' ? 'Cash on Delivery' : selectedOrder.paymentMethod}
+                    {selectedOrder.paymentMethod === 'cash' ? 'Cash on Delivery' : (selectedOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : selectedOrder.paymentMethod)}
                   </span>
                 </div>
               </div>
@@ -726,8 +721,8 @@ export default function AdminOrders() {
                         try {
                           const res = await fetch(`/api/pathao/track/${selectedOrder.pathaoConsignmentId}`);
                           const data = await res.json();
-                          if (data && data.data && data.data.order_status) {
-                            toast({ title: "Tracking Update", description: `Current Status: ${data.data.order_status}` });
+                          if (data && data.order_status) {
+                            toast({ title: "Tracking Update", description: `Current Status: ${data.order_status}` });
                           } else {
                             toast({ title: "Tracking", description: "No status update available" });
                           }
@@ -772,9 +767,9 @@ export default function AdminOrders() {
         loading={isSendingToPathao}
         order={selectedOrder}
       />
-    </AdminLayout >
+    </>
   );
-}
+};
 
 function PathaoDialog({ open, onOpenChange, formData, setFormData, stores, cities, zones, areas, onCityChange, onZoneChange, onSend, loading, order }: any) {
   if (!order) return null;
@@ -802,51 +797,90 @@ function PathaoDialog({ open, onOpenChange, formData, setFormData, stores, citie
             </Select>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Recipient Phone</label>
-            <Input value={formData.phoneNumber} onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })} />
+            <label className="text-sm font-medium">Zone</label>
+            <Select value={formData.zoneId} onValueChange={onZoneChange} disabled={!formData.cityId}>
+              <SelectTrigger><SelectValue placeholder="Select Zone" /></SelectTrigger>
+              <SelectContent>{zones.map((z: any) => <SelectItem key={z.zone_id} value={z.zone_id.toString()}>{z.zone_name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          {zones.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Zone</label>
-              <Select value={formData.zoneId} onValueChange={onZoneChange}>
-                <SelectTrigger><SelectValue placeholder="Select Zone" /></SelectTrigger>
-                <SelectContent>{zones.map((z: any) => <SelectItem key={z.zone_id} value={z.zone_id.toString()}>{z.zone_name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          )}
-          {zones.length > 0 && areas.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Area</label>
-              <Select value={formData.areaId} onValueChange={(v) => setFormData({ ...formData, areaId: v })}>
-                <SelectTrigger><SelectValue placeholder="Select Area" /></SelectTrigger>
-                <SelectContent>{areas.map((a: any) => <SelectItem key={a.area_id} value={a.area_id.toString()}>{a.area_name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Area</label>
+            <Select value={formData.areaId} onValueChange={(v) => setFormData({ ...formData, areaId: v })} disabled={!formData.zoneId}>
+              <SelectTrigger><SelectValue placeholder="Select Area" /></SelectTrigger>
+              <SelectContent>{areas.map((a: any) => <SelectItem key={a.area_id} value={a.area_id.toString()}>{a.area_name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Recipient Phone</label>
+            <Input
+              value={formData.phoneNumber || order.customerPhone}
+              onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+              placeholder="01XXXXXXXXX"
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Weight (kg)</label>
-              <Input type="number" step="0.5" value={formData.weight} onChange={e => setFormData({ ...formData, weight: e.target.value })} />
+              <label className="text-sm font-medium">Weight (KG)</label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0.5"
+                value={formData.weight}
+                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Collect Amount</label>
-              <Input disabled value={order.paymentMethod === 'cod' ? order.total : 0} />
+              <label className="text-sm font-medium">Amount to Collect</label>
+              <Input
+                type="number"
+                value={order.paymentMethod === 'cod' || order.paymentMethod === 'cash' ? order.total : 0}
+                readOnly
+                className="bg-gray-100"
+              />
             </div>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Special Instruction</label>
-            <Input placeholder="e.g. Handle with care" value={formData.instruction} onChange={e => setFormData({ ...formData, instruction: e.target.value })} />
+            <Input
+              value={formData.instruction}
+              onChange={(e) => setFormData({ ...formData, instruction: e.target.value })}
+              placeholder="Careful with contents"
+            />
           </div>
         </div>
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-3 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={onSend} disabled={loading || !formData.cityId || !formData.zoneId || !formData.areaId}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirm Send
+          <Button
+            onClick={onSend}
+            disabled={loading || !formData.storeId || !formData.cityId || !formData.zoneId || !formData.areaId}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : 'Send Order'}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export default function AdminOrders() {
+  return (
+    <AdminLayout>
+      <Suspense fallback={
+        <div className="p-6">
+          <div className="mb-6">
+            <h1 className="text-3xl font-heading font-bold text-gray-900">Orders</h1>
+            <p className="text-gray-500">Manage and track all customer orders</p>
+          </div>
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-dashed">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+            <p className="text-gray-500 font-medium">Loading orders data...</p>
+          </div>
+        </div>
+      }>
+        <OrdersContent />
+      </Suspense>
+    </AdminLayout>
   );
 }
 

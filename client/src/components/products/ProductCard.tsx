@@ -8,21 +8,26 @@ type ProductCardProps = {
   product: ProductWithCategory;
   featured?: boolean;
   priority?: boolean;
+  animationIndex?: number;
 };
 
-const ProductCard = ({ product, featured = false, priority = false }: ProductCardProps) => {
+const ProductCard = ({ product, featured = false, priority = false, animationIndex = 0 }: ProductCardProps) => {
   const { addToCart } = useCart();
+  const isSoldOut = product.stock === 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product);
+    if (!isSoldOut) addToCart(product);
   };
 
   let badge = null;
   let badgeColor = "";
 
-  if (product.isBestseller) {
+  if (isSoldOut) {
+    badge = "Sold Out";
+    badgeColor = "bg-red-100 text-red-700";
+  } else if (product.isBestseller) {
     badge = "Bestseller";
     badgeColor = "bg-amber-100 text-amber-700";
   } else if (product.isPopular) {
@@ -33,18 +38,24 @@ const ProductCard = ({ product, featured = false, priority = false }: ProductCar
     badgeColor = "bg-accent/25 text-primary";
   }
 
+  // Staggered animation delay based on index
+  const delay = `${(animationIndex % 12) * 60}ms`;
+
   return (
     <Link href={`/products/${product.slug}`}>
-      <div className={`bg-white rounded-2xl border border-[#e3d9c8] overflow-hidden group ${featured
-        ? 'shadow-md hover:shadow-xl transition-all duration-500'
-        : 'shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-2'
-        }`}>
+      <div
+        className={`bg-white rounded-2xl border border-[#e3d9c8] overflow-hidden group product-card-enter ${featured
+          ? 'shadow-md hover:shadow-xl transition-all duration-500'
+          : 'shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-2'
+          } ${isSoldOut ? 'opacity-80' : ''}`}
+        style={{ animationDelay: delay }}
+      >
         {/* Image Container with overlay effect */}
         <div className="relative overflow-hidden">
           {/* Badge */}
           {badge && (
             <div className={`absolute top-4 left-4 z-10 ${badgeColor} py-1 px-3 rounded-full text-xs font-bold flex items-center`}>
-              {product.isBestseller && <Star className="mr-1" size={12} fill="currentColor" />}
+              {!isSoldOut && product.isBestseller && <Star className="mr-1" size={12} fill="currentColor" />}
               {badge}
             </div>
           )}
@@ -54,31 +65,47 @@ const ProductCard = ({ product, featured = false, priority = false }: ProductCar
             {product.category.name}
           </div>
 
-          {/* Quick add button - visible on hover */}
-          <button
-            className="absolute right-4 bottom-4 z-10 bg-primary text-white p-3 rounded-full shadow-lg transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300"
-            onClick={handleAddToCart}
-            aria-label="Add to cart"
-          >
-            <Plus size={20} />
-          </button>
+          {/* Quick add button - visible on hover, hidden when sold out */}
+          {!isSoldOut && (
+            <button
+              className="absolute right-4 bottom-4 z-10 bg-primary text-white p-3 rounded-full shadow-lg transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300"
+              onClick={handleAddToCart}
+              aria-label="Add to cart"
+            >
+              <Plus size={20} />
+            </button>
+          )}
 
           {/* Product Image */}
           <div className="relative overflow-hidden bg-white" style={{ aspectRatio: '1/1' }}>
             <img
-              src={product.image}
+              src={product.image || "/No_image_available.svg.webp"}
               alt={product.name}
               loading={priority ? "eager" : "lazy"}
               decoding="async"
               // @ts-ignore - fetchPriority is not yet in React types
               fetchpriority={priority ? "high" : "auto"}
               onLoad={(e) => e.currentTarget.classList.add('loaded')}
+              onError={(e) => {
+                e.currentTarget.src = "/No_image_available.svg.webp";
+              }}
               className="absolute inset-0 w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105 blur-sm opacity-70 transition-all duration-300 [&.loaded]:blur-0 [&.loaded]:opacity-100"
             />
+
+            {/* Sold Out overlay */}
+            {isSoldOut && (
+              <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                <span className="bg-red-600 text-white font-bold text-sm px-4 py-2 rounded-full shadow-md tracking-wide rotate-[-8deg]">
+                  Sold Out
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          {!isSoldOut && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          )}
         </div>
 
         {/* Content */}
@@ -100,21 +127,26 @@ const ProductCard = ({ product, featured = false, priority = false }: ProductCar
             </div>
           )}
 
-          {/* Description */}
-          {/* <p className="text-gray-600 text-sm mb-5 leading-relaxed">
-            {truncateText(product.description, featured ? 120 : 75)}
-          </p> */}
-
           {/* Price and Add to Cart Button */}
           <div className="flex items-center justify-between gap-3">
             <span className="text-primary font-bold text-md">{formatCurrency(product.price)}</span>
-            <button
-              className="flex-1 bg-[#faf6f1] hover:bg-primary hover:text-white text-primary py-3 px-4 rounded-xl font-medium transition-colors duration-300 flex items-center justify-center"
-              onClick={handleAddToCart}
-            >
-              <ShoppingCart className="mr-2" size={18} />
-              Cart
-            </button>
+            {isSoldOut ? (
+              <button
+                disabled
+                className="flex-1 bg-gray-200 text-gray-400 py-3 px-4 rounded-xl font-medium cursor-not-allowed flex items-center justify-center"
+              >
+                <ShoppingCart className="mr-2" size={18} />
+                Sold
+              </button>
+            ) : (
+              <button
+                className="flex-1 bg-[#faf6f1] hover:bg-primary hover:text-white text-primary py-3 px-4 rounded-xl font-medium transition-colors duration-300 flex items-center justify-center"
+                onClick={handleAddToCart}
+              >
+                <ShoppingCart className="mr-2" size={18} />
+                Cart
+              </button>
+            )}
           </div>
         </div>
       </div>

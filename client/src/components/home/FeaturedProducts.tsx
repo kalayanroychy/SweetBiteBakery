@@ -3,11 +3,34 @@ import { Link } from 'wouter';
 import { ProductWithCategory } from "@shared/schema";
 import ProductCard from '@/components/products/ProductCard';
 import { ArrowRight } from 'lucide-react';
+import { motion } from "framer-motion";
 
 const FeaturedProducts = () => {
   const { data: products, isLoading, error } = useQuery<ProductWithCategory[]>({
     queryKey: ['/api/products/featured'],
   });
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }
+  };
 
   return (
     <section className="py-16">
@@ -18,8 +41,8 @@ const FeaturedProducts = () => {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[...Array(3)].map((_, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[...Array(4)].map((_, i) => (
               <div key={i} className="bg-white rounded-lg shadow-lg overflow-hidden p-6 animate-pulse">
                 <div className="w-full h-60 bg-gray-200 mb-4"></div>
                 <div className="h-6 bg-gray-200 w-3/4 mb-2"></div>
@@ -37,11 +60,19 @@ const FeaturedProducts = () => {
             Failed to load featured products. Please try again later.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+          >
             {products && products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <motion.div key={product.id} variants={itemVariants}>
+                <ProductCard product={product} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         <div className="text-center mt-12">

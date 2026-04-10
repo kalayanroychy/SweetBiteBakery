@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { ProductWithCategory } from "@shared/schema";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -33,7 +31,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -42,13 +39,197 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 10;
+
+const ProductTableStream = ({ searchTerm, currentPage, setCurrentPage, handleDeleteClick }: any) => {
+  const { data: products } = useSuspenseQuery<any[]>({
+    queryKey: ["/api/admin/products"],
+    staleTime: 60 * 1000, // 1 minute stale time (ISR)
+    refetchInterval: 5 * 60 * 1000, // Background refresh every 5 minutes
+  });
+
+  // Filter products based on search term
+  const filteredProducts = Array.isArray(products)
+    ? products.filter(
+      (product: any) =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    : [];
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedProducts = filteredProducts.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE,
+  );
+
+  if (filteredProducts.length === 0) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        <p>
+          No products found.{" "}
+          {searchTerm && "Try a different search term."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[80px]">ID</TableHead>
+              <TableHead className="w-[80px]">Image</TableHead>
+              <TableHead>Product</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedProducts.map((product) => (
+              <TableRow key={product.id}>
+                <TableCell className="font-mono text-xs">
+                  {product.id}
+                </TableCell>
+                <TableCell>
+                  <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
+                    <img
+                      src={product.image || "/No_image_available.svg.webp"}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "/No_image_available.svg.webp";
+                      }}
+                    />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div>
+                    <p className="font-medium">{product.name}</p>
+                    <p className="text-xs text-gray-500 truncate max-w-[200px]">
+                      {product.description}
+                    </p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {product.category?.name || "Uncategorized"}
+                  </Badge>
+                </TableCell>
+                <TableCell>{formatCurrency(product.price)}</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {product.featured && (
+                      <Badge className="bg-amber-500 text-white">
+                        Featured
+                      </Badge>
+                    )}
+                    {product.isBestseller && (
+                      <Badge className="bg-amber-500 text-white">
+                        Bestseller
+                      </Badge>
+                    )}
+                    {product.isNew && (
+                      <Badge className="bg-blue-500 text-white">
+                        New
+                      </Badge>
+                    )}
+                    {product.isPopular && (
+                      <Badge className="bg-purple-500 text-white">
+                        Popular
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={`/admin/products/edit/${product.id}`}
+                        >
+                          <div className="w-full flex items-center cursor-pointer">
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </div>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-red-500 focus:text-red-500"
+                        onClick={() => handleDeleteClick(product.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      {filteredProducts.length > 0 && (
+        <div className="flex justify-between items-center p-4 border-t">
+          <div className="text-sm text-gray-500">
+            Showing {startIndex + 1} to{" "}
+            {Math.min(
+              startIndex + ITEMS_PER_PAGE,
+              filteredProducts.length,
+            )}{" "}
+            of {filteredProducts.length} products
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={currentPage === 1}
+              onClick={() =>
+                setCurrentPage((page: number) => Math.max(1, page - 1))
+              }
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm px-2">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={currentPage === totalPages}
+              onClick={() =>
+                setCurrentPage((page: number) => Math.min(totalPages, page + 1))
+              }
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 const AdminProducts = () => {
   const [_, navigate] = useLocation();
@@ -80,41 +261,6 @@ const AdminProducts = () => {
     checkAuth();
   }, [navigate]);
 
-  // Fetch products
-  const {
-    data: productsData,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["/api/products"],
-    queryFn: async () => {
-      const response = await fetch("/api/products");
-      return response.json();
-    },
-    // If this fails due to auth, we'll redirect in the effect above
-    retry: false,
-  });
-
-  // Extract products array from paginated response
-  const products = productsData?.products || productsData || [];
-
-  // Filter products based on search term
-  const filteredProducts = Array.isArray(products)
-    ? products.filter(
-      (product: any) =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase()),
-    )
-    : [];
-
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedProducts = filteredProducts.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE,
-  );
-
   // Handle product deletion
   const handleDeleteClick = (productId: number) => {
     setDeleteProductId(productId);
@@ -133,9 +279,9 @@ const AdminProducts = () => {
         undefined,
       );
 
-      queryClient.invalidateQueries({
-        queryKey: ["/api/products"],
-      });
+      // Invalidate queries for both public and private endpoints
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
 
       toast({
         title: "Product deleted",
@@ -194,165 +340,19 @@ const AdminProducts = () => {
 
         <Card>
           <CardContent className="p-0">
-            {isLoading ? (
+            <Suspense fallback={
               <div className="p-8 text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                 <p className="mt-2 text-gray-500">Loading products...</p>
               </div>
-            ) : error ? (
-              <div className="p-8 text-center text-red-500">
-                <AlertTriangle className="mx-auto h-8 w-8 mb-2" />
-                <p>Error loading products. Please try again.</p>
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <p>
-                  No products found.{" "}
-                  {searchTerm && "Try a different search term."}
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[80px]">ID</TableHead>
-                      <TableHead className="w-[80px]">Image</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedProducts.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell className="font-mono text-xs">
-                          {product.id}
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-12 h-12 rounded-md overflow-hidden">
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{product.name}</p>
-                            <p className="text-xs text-gray-500 truncate max-w-[200px]">
-                              {product.description}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {product.category.name}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatCurrency(product.price)}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {product.featured && (
-                              <Badge className="bg-amber-500 text-white">
-                                Featured
-                              </Badge>
-                            )}
-                            {product.isBestseller && (
-                              <Badge className="bg-amber-500 text-white">
-                                Bestseller
-                              </Badge>
-                            )}
-                            {product.isNew && (
-                              <Badge className="bg-blue-500 text-white">
-                                New
-                              </Badge>
-                            )}
-                            {product.isPopular && (
-                              <Badge className="bg-purple-500 text-white">
-                                Popular
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild>
-                                <Link
-                                  href={`/admin/products/edit/${product.id}`}
-                                >
-                                  <div className="w-full flex items-center cursor-pointer">
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit
-                                  </div>
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-500 focus:text-red-500"
-                                onClick={() => handleDeleteClick(product.id)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-
-            {/* Pagination */}
-            {filteredProducts.length > 0 && (
-              <div className="flex justify-between items-center p-4 border-t">
-                <div className="text-sm text-gray-500">
-                  Showing {startIndex + 1} to{" "}
-                  {Math.min(
-                    startIndex + ITEMS_PER_PAGE,
-                    filteredProducts.length,
-                  )}{" "}
-                  of {filteredProducts.length} products
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={currentPage === 1}
-                    onClick={() =>
-                      setCurrentPage((page) => Math.max(1, page - 1))
-                    }
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm px-2">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={currentPage === totalPages}
-                    onClick={() =>
-                      setCurrentPage((page) => Math.min(totalPages, page + 1))
-                    }
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+            }>
+              <ProductTableStream 
+                searchTerm={searchTerm}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                handleDeleteClick={handleDeleteClick}
+              />
+            </Suspense>
           </CardContent>
         </Card>
       </div>

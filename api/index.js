@@ -24417,7 +24417,7 @@ var init_pathao = __esm({
           price: data.data?.price || 0,
           cod_charge: data.data?.cod_charge || 0,
           promo_discount: data.data?.promo_discount || 0,
-          total_price: data.data?.total_fee || 0
+          total_price: data.data?.final_price || data.data?.total_fee || data.data?.price || 0
         };
       }
       // Create order/parcel
@@ -25653,6 +25653,75 @@ async function optimizeImage(base64String) {
   }
 }
 
+// server/utils/isr-cache.ts
+var ISRCache = class {
+  cache = /* @__PURE__ */ new Map();
+  defaultTTL;
+  // in milliseconds
+  constructor(defaultTTLSeconds = 300) {
+    this.defaultTTL = defaultTTLSeconds * 1e3;
+  }
+  /**
+   * Get data from cache or fetch it if not present.
+   * Implements stale-while-revalidate logic.
+   */
+  async getData(key, fetcher, ttlOverride) {
+    const ttl = (ttlOverride ?? this.defaultTTL / 1e3) * 1e3;
+    const now = Date.now();
+    const cachedItem = this.cache.get(key);
+    if (cachedItem) {
+      const isStale = now - cachedItem.timestamp > ttl;
+      if (isStale) {
+        if (!cachedItem.isRefreshing) {
+          cachedItem.isRefreshing = true;
+          fetcher().then((freshData) => {
+            this.cache.set(key, {
+              data: freshData,
+              timestamp: Date.now(),
+              isRefreshing: false
+            });
+          }).catch((err) => {
+            console.error(`ISRCache background refresh failed for key ${key}:`, err);
+            cachedItem.isRefreshing = false;
+          });
+        }
+        return cachedItem.data;
+      }
+      return cachedItem.data;
+    }
+    const data = await fetcher();
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      isRefreshing: false
+    });
+    return data;
+  }
+  /**
+   * Invalidate specific key
+   */
+  invalidate(key) {
+    this.cache.delete(key);
+  }
+  /**
+   * Invalidate keys matching a pattern (prefix)
+   */
+  invalidatePattern(pattern) {
+    for (const key of Array.from(this.cache.keys())) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+  /**
+   * Clear entire cache
+   */
+  clear() {
+    this.cache.clear();
+  }
+};
+var isrCache = new ISRCache();
+
 // server/routes.ts
 async function registerRoutes(app2) {
   try {
@@ -25773,7 +25842,12 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/categories", async (_req, res) => {
     try {
-      const categories2 = await storage.getCategories();
+      const categories2 = await isrCache.getData("categories:all", async () => {
+        return await storage.getCategories();
+      });
+      res.set({
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600"
+      });
       res.json(categories2);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch categories" });
@@ -25824,28 +25898,30 @@ async function registerRoutes(app2) {
         dietary,
         sort
       };
-      const products2 = await storage.getProducts(limit, offset, filters);
-      const categories2 = await storage.getCategories();
-      const total = await storage.getProductsCount(filters);
-      const categoryMap = new Map(categories2.map((c) => [c.id, c]));
-      const productsWithCategory = products2.map((product) => {
-        const category2 = categoryMap.get(product.categoryId);
+      const cacheKey = `products:${JSON.stringify({ limit, offset, filters })}`;
+      const result = await isrCache.getData(cacheKey, async () => {
+        const products2 = await storage.getProducts(limit, offset, filters);
+        const categories2 = await storage.getCategories();
+        const total = await storage.getProductsCount(filters);
+        const categoryMap = new Map(categories2.map((c) => [c.id, c]));
+        const productsWithCategory = products2.map((product) => {
+          const category2 = categoryMap.get(product.categoryId);
+          return {
+            ...product,
+            category: category2 || { id: 0, name: "Unknown", slug: "unknown" }
+          };
+        });
         return {
-          ...product,
-          category: category2 || { id: 0, name: "Unknown", slug: "unknown" }
+          products: productsWithCategory,
+          total,
+          limit,
+          offset
         };
       });
       res.set({
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0"
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600"
       });
-      res.json({
-        products: productsWithCategory,
-        total,
-        limit,
-        offset
-      });
+      res.json(result);
     } catch (error) {
       console.error("Products API Error:", error);
       res.status(500).json({ message: "Failed to fetch products" });
@@ -25853,18 +25929,19 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/products/featured", async (_req, res) => {
     try {
-      const products2 = await storage.getFeaturedProducts();
-      const categories2 = await storage.getCategories();
-      const productsWithCategory = products2.map((product) => {
-        const category = categories2.find((c) => c.id === product.categoryId);
-        return {
-          ...product,
-          category: category || { id: 0, name: "Unknown", slug: "unknown" }
-        };
+      const productsWithCategory = await isrCache.getData("products:featured", async () => {
+        const products2 = await storage.getFeaturedProducts();
+        const categories2 = await storage.getCategories();
+        return products2.map((product) => {
+          const category = categories2.find((c) => c.id === product.categoryId);
+          return {
+            ...product,
+            category: category || { id: 0, name: "Unknown", slug: "unknown" }
+          };
+        });
       });
       res.set({
-        "Cache-Control": "public, max-age=300",
-        // 5 minutes
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
         "ETag": `W/"featured-${productsWithCategory.length}"`
       });
       res.json(productsWithCategory);
@@ -26161,6 +26238,29 @@ async function registerRoutes(app2) {
       }
     }
   });
+  app2.get("/api/admin/products", checkAuth, async (req, res) => {
+    try {
+      const productsWithCategory = await isrCache.getData("admin:products:all", async () => {
+        const products2 = await storage.getProducts();
+        const categories2 = await storage.getCategories();
+        const categoryMap = new Map(categories2.map((c) => [c.id, c]));
+        return products2.map((product) => {
+          const category = categoryMap.get(product.categoryId);
+          return {
+            ...product,
+            category: category || { id: 0, name: "Unknown", slug: "unknown" }
+          };
+        });
+      }, 60);
+      res.set({
+        "Cache-Control": "private, s-maxage=60, stale-while-revalidate=120"
+      });
+      res.json(productsWithCategory);
+    } catch (error) {
+      console.error("Admin Products API Error:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
   app2.post("/api/admin/products", checkAuth, async (req, res) => {
     try {
       const productData = insertProductSchema.parse(req.body);
@@ -26173,6 +26273,7 @@ async function registerRoutes(app2) {
         );
       }
       const product = await storage.createProduct(productData);
+      isrCache.invalidatePattern("products");
       res.status(201).json(product);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -26202,6 +26303,7 @@ async function registerRoutes(app2) {
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
+      isrCache.invalidatePattern("products");
       res.json(product);
     } catch (error) {
       console.error("Product Update Error:", error);
@@ -26222,6 +26324,7 @@ async function registerRoutes(app2) {
       if (!success) {
         return res.status(404).json({ message: "Product not found" });
       }
+      isrCache.invalidatePattern("products");
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete product" });
@@ -26234,6 +26337,7 @@ async function registerRoutes(app2) {
         categoryData.image = await optimizeImage(categoryData.image);
       }
       const category = await storage.createCategory(categoryData);
+      isrCache.invalidatePattern("products");
       res.status(201).json(category);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -26374,48 +26478,54 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/admin/dashboard", checkAuth, async (req, res) => {
     try {
-      const products2 = await storage.getProducts();
-      const categories2 = await storage.getCategories();
-      const orders2 = await storage.getOrders();
-      const totalRevenue = orders2.reduce((sum, order) => sum + (order.total || 0), 0);
-      const recentOrders = orders2.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      }).slice(0, 10);
-      const categoryDistribution = categories2.map((category) => {
-        const count = products2.filter((p) => p.categoryId === category.id).length;
-        return {
-          name: category.name,
-          count
-        };
-      });
-      const now = /* @__PURE__ */ new Date();
-      const monthlyOrders = [];
-      for (let i = 5; i >= 0; i--) {
-        const date2 = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthName = date2.toLocaleDateString("en-US", { month: "short" });
-        const monthStart = new Date(date2.getFullYear(), date2.getMonth(), 1);
-        const monthEnd = new Date(date2.getFullYear(), date2.getMonth() + 1, 0);
-        const count = orders2.filter((order) => {
-          if (!order.createdAt) return false;
-          const orderDate = new Date(order.createdAt);
-          return orderDate >= monthStart && orderDate <= monthEnd;
-        }).length;
-        monthlyOrders.push({
-          name: monthName,
-          orders: count
+      const dashboardData = await isrCache.getData("admin:dashboard", async () => {
+        const products2 = await storage.getProducts();
+        const categories2 = await storage.getCategories();
+        const orders2 = await storage.getOrders();
+        const totalRevenue = orders2.reduce((sum, order) => sum + (order.total || 0), 0);
+        const recentOrders = orders2.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        }).slice(0, 10);
+        const categoryDistribution = categories2.map((category) => {
+          const count = products2.filter((p) => p.categoryId === category.id).length;
+          return {
+            name: category.name,
+            count
+          };
         });
-      }
-      res.json({
-        totalProducts: products2.length,
-        totalCategories: categories2.length,
-        totalOrders: orders2.length,
-        totalRevenue,
-        recentOrders,
-        categoryDistribution,
-        monthlyOrders
+        const now = /* @__PURE__ */ new Date();
+        const monthlyOrders = [];
+        for (let i = 5; i >= 0; i--) {
+          const date2 = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthName = date2.toLocaleDateString("en-US", { month: "short" });
+          const monthStart = new Date(date2.getFullYear(), date2.getMonth(), 1);
+          const monthEnd = new Date(date2.getFullYear(), date2.getMonth() + 1, 0);
+          const count = orders2.filter((order) => {
+            if (!order.createdAt) return false;
+            const orderDate = new Date(order.createdAt);
+            return orderDate >= monthStart && orderDate <= monthEnd;
+          }).length;
+          monthlyOrders.push({
+            name: monthName,
+            orders: count
+          });
+        }
+        return {
+          totalProducts: products2.length,
+          totalCategories: categories2.length,
+          totalOrders: orders2.length,
+          totalRevenue,
+          recentOrders,
+          categoryDistribution,
+          monthlyOrders
+        };
+      }, 60);
+      res.set({
+        "Cache-Control": "private, s-maxage=60, stale-while-revalidate=120"
       });
+      res.json(dashboardData);
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
       res.status(500).json({ message: "Failed to fetch dashboard data" });
@@ -26423,28 +26533,33 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/admin/orders", checkAuth, async (req, res) => {
     try {
-      const [orders2, products2] = await Promise.all([
-        storage.getOrders(),
-        storage.getProducts()
-        // Fetch all products once
-      ]);
-      const productMap = new Map(products2.map((p) => [p.id, p]));
-      const ordersWithItems = await Promise.all(
-        orders2.map(async (order) => {
-          const items = await storage.getOrderItems(order.id);
-          const itemsWithProductNames = items.map((item) => {
-            const product = productMap.get(item.productId);
+      const ordersWithItems = await isrCache.getData("admin:orders:all", async () => {
+        const [orders2, products2] = await Promise.all([
+          storage.getOrders(),
+          storage.getProducts()
+          // Fetch all products once
+        ]);
+        const productMap = new Map(products2.map((p) => [p.id, p]));
+        return await Promise.all(
+          orders2.map(async (order) => {
+            const items = await storage.getOrderItems(order.id);
+            const itemsWithProductNames = items.map((item) => {
+              const product = productMap.get(item.productId);
+              return {
+                ...item,
+                productName: product?.name || `Product #${item.productId}`
+              };
+            });
             return {
-              ...item,
-              productName: product?.name || `Product #${item.productId}`
+              ...order,
+              items: itemsWithProductNames
             };
-          });
-          return {
-            ...order,
-            items: itemsWithProductNames
-          };
-        })
-      );
+          })
+        );
+      }, 60);
+      res.set({
+        "Cache-Control": "private, s-maxage=60, stale-while-revalidate=120"
+      });
       res.json(ordersWithItems);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
@@ -26615,6 +26730,56 @@ async function registerRoutes(app2) {
         subtotal: item.price * item.quantity
       }));
       const order = await storage.processOrder(orderWithUser, orderItemsData);
+      if (orderData.paymentMethod === "credit-card") {
+        const storeId = process.env.STORE_ID;
+        const storePassword = process.env.STORE_PASSWORD;
+        const isLive = process.env.SSLCOMMERZ_MODE === "live";
+        const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
+        const sslUrl = isLive ? "https://securepay.sslcommerz.com/gwprocess/v4/api.php" : "https://sandbox.sslcommerz.com/gwprocess/v4/api.php";
+        const params = new URLSearchParams({
+          store_id: storeId || "",
+          store_passwd: storePassword || "",
+          total_amount: order.total.toString(),
+          currency: "BDT",
+          tran_id: `SBB-${order.id}-${Date.now()}`,
+          success_url: `${backendUrl}/api/payment/success`,
+          fail_url: `${backendUrl}/api/payment/fail`,
+          cancel_url: `${backendUrl}/api/payment/cancel`,
+          ipn_url: `${backendUrl}/api/payment/ipn`,
+          cus_name: order.customerName,
+          cus_email: order.customerEmail,
+          cus_add1: order.address,
+          cus_city: order.city || "Dhaka",
+          cus_state: order.state || "Dhaka",
+          cus_postcode: order.zipCode || "1000",
+          cus_country: "Bangladesh",
+          cus_phone: order.customerPhone,
+          ship_name: order.customerName,
+          ship_add1: order.address,
+          ship_city: order.city || "Dhaka",
+          ship_state: order.state || "Dhaka",
+          ship_postcode: order.zipCode || "1000",
+          ship_country: "Bangladesh",
+          shipping_method: "Courier",
+          product_name: "Bakery Items",
+          product_category: "Food",
+          product_profile: "general",
+          value_a: order.id.toString()
+          // Carry order ID through transaction
+        });
+        const response = await fetch(sslUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params.toString()
+        });
+        const sslData = await response.json();
+        if (sslData?.status === "SUCCESS" && sslData?.GatewayPageURL) {
+          return res.status(201).json({ order, gatewayUrl: sslData.GatewayPageURL });
+        } else {
+          console.error("SSLCommerz init failed:", sslData);
+          return res.status(502).json({ message: "Payment gateway initialization failed", sslData });
+        }
+      }
       res.status(201).json({ order });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -26623,6 +26788,66 @@ async function registerRoutes(app2) {
         const message = error instanceof Error ? error.message : "Failed to create order";
         res.status(500).json({ message });
       }
+    }
+  });
+  app2.post("/api/payment/success", async (req, res) => {
+    try {
+      const { val_id, tran_id, value_a, status } = req.body;
+      console.log("[SSLCommerz] Success callback:", req.body);
+      const orderId = parseInt(value_a);
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5000";
+      if (!isNaN(orderId)) {
+        await storage.updateOrderStatus(orderId, "processing");
+      }
+      return res.redirect(`${frontendUrl}/order-confirmation?ssl=1&order=${orderId}&tran=${tran_id}`);
+    } catch (error) {
+      console.error("[SSLCommerz] Success handler error:", error);
+      res.redirect(`/order-confirmation?ssl=err`);
+    }
+  });
+  app2.post("/api/payment/fail", async (req, res) => {
+    try {
+      const { value_a } = req.body;
+      console.log("[SSLCommerz] Fail callback:", req.body);
+      const orderId = parseInt(value_a);
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5000";
+      if (!isNaN(orderId)) {
+        await storage.updateOrderStatus(orderId, "cancelled");
+      }
+      return res.redirect(`${frontendUrl}/checkout?ssl=fail&order=${orderId}`);
+    } catch (error) {
+      console.error("[SSLCommerz] Fail handler error:", error);
+      res.redirect(`/checkout?ssl=err`);
+    }
+  });
+  app2.post("/api/payment/cancel", async (req, res) => {
+    try {
+      const { value_a } = req.body;
+      console.log("[SSLCommerz] Cancel callback:", req.body);
+      const orderId = parseInt(value_a);
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5000";
+      if (!isNaN(orderId)) {
+        await storage.updateOrderStatus(orderId, "cancelled");
+      }
+      return res.redirect(`${frontendUrl}/checkout?ssl=cancel&order=${orderId}`);
+    } catch (error) {
+      console.error("[SSLCommerz] Cancel handler error:", error);
+      res.redirect(`/checkout?ssl=err`);
+    }
+  });
+  app2.post("/api/payment/ipn", async (req, res) => {
+    try {
+      const { val_id, status, value_a, tran_id } = req.body;
+      console.log("[SSLCommerz] IPN callback:", req.body);
+      const orderId = parseInt(value_a);
+      if (!isNaN(orderId) && status === "VALID") {
+        await storage.updateOrderStatus(orderId, "processing");
+        console.log(`[SSLCommerz] IPN: Order ${orderId} marked as processing. TranID: ${tran_id}`);
+      }
+      return res.status(200).json({ received: true });
+    } catch (error) {
+      console.error("[SSLCommerz] IPN handler error:", error);
+      res.status(500).json({ error: "IPN handling failed" });
     }
   });
   app2.get("/api/orders/:id", checkAuth, async (req, res) => {
@@ -26701,7 +26926,18 @@ async function registerRoutes(app2) {
     try {
       const { getPathaoService: getPathaoService2 } = await Promise.resolve().then(() => (init_pathao(), pathao_exports));
       const pathao = getPathaoService2();
-      const stores = await pathao.getStores();
+      let stores = await pathao.getStores();
+      if (stores.length === 0 && process.env.PATHAO_STORE_ID) {
+        stores = [{
+          store_id: parseInt(process.env.PATHAO_STORE_ID),
+          store_name: "Default Store",
+          store_address: "Address configured in Pathao panel",
+          city_id: 1,
+          // Default to Dhaka
+          zone_id: 1,
+          area_id: 1
+        }];
+      }
       res.json(stores);
     } catch (error) {
       console.error("Pathao stores error:", error);

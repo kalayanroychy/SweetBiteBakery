@@ -11,10 +11,28 @@ const OrderConfirmation = () => {
   const [orderDetails, setOrderDetails] = useState<{
     orderId: string;
     email: string;
+    isOnlinePayment?: boolean;
+    tranId?: string;
   } | null>(null);
 
-  // Get order details from sessionStorage
+  // Get order details — supports both sessionStorage (COD) and SSLCommerz redirect (?ssl=1)
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sslFlag = params.get("ssl");
+    const sslOrderId = params.get("order");
+    const sslTranId = params.get("tran");
+
+    if (sslFlag === "1" && sslOrderId) {
+      // Coming back from SSLCommerz payment gateway
+      setOrderDetails({
+        orderId: sslOrderId,
+        email: "—",
+        isOnlinePayment: true,
+        tranId: sslTranId || undefined,
+      });
+      return;
+    }
+
     const hasPlacedOrder = sessionStorage.getItem("order_placed");
     const orderId = sessionStorage.getItem("order_id");
     const email = sessionStorage.getItem("order_email");

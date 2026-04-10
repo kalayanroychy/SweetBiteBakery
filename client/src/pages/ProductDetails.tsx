@@ -81,8 +81,19 @@ const ProductDetails = () => {
     }
   }, [product, selectedSize, selectedColor]);
 
+  const isSoldOut = product?.stock === 0;
+
   const handleAddToCart = () => {
     if (product) {
+      if (isSoldOut) {
+        toast({
+          title: "😔 Sorry, This Item is Sold Out",
+          description: "This product is currently out of stock. Check back soon!",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (product.sizes && product.sizes.length > 0 && !selectedSize) {
         toast({
           title: "🍰 Size Selection Required",
@@ -241,9 +252,12 @@ const ProductDetails = () => {
                           }`}
                       >
                         <img
-                          src={img}
+                          src={img || "/No_image_available.svg.webp"}
                           alt={`${product.name} view ${index + 1}`}
                           className="w-full h-20 object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "/No_image_available.svg.webp";
+                          }}
                         />
                         {index === currentImageIndex && (
                           <div className="absolute inset-0 border-2 border-[hsl(var(--cinnamon))] pointer-events-none"></div>
@@ -256,8 +270,17 @@ const ProductDetails = () => {
                 {/* Main Image */}
                 <div className="flex-1">
                   <div className="relative group rounded-2xl overflow-hidden bg-gradient-to-br from-white to-[hsl(var(--vanilla))] p-4 shadow-xl">
+                    {/* Sold Out overlay */}
+                    {isSoldOut && (
+                      <div className="absolute inset-0 z-20 bg-white/50 backdrop-blur-[2px] flex items-center justify-center rounded-xl">
+                        <div className="bg-red-600 text-white font-bold text-xl px-8 py-3 rounded-full shadow-xl rotate-[-8deg] tracking-wider">
+                          Sold Out
+                        </div>
+                      </div>
+                    )}
+
                     {/* Special Badges */}
-                    {(product.isBestseller || product.isNew || product.isPopular) && (
+                    {!isSoldOut && (product.isBestseller || product.isNew || product.isPopular) && (
                       <div className="absolute top-6 right-6 z-10">
                         {product.isBestseller && (
                           <Badge className="bg-gradient-to-r from-[hsl(var(--honey))] to-[hsl(var(--cinnamon))] text-white border-none shadow-lg animate-pulse">
@@ -289,10 +312,13 @@ const ProductDetails = () => {
                     </div>
 
                     <img
-                      src={allImages[currentImageIndex] || product.image}
+                      src={allImages[currentImageIndex] || product.image || "/No_image_available.svg.webp"}
                       alt={product.name}
                       className="w-full aspect-square object-cover rounded-xl cursor-pointer transition-transform duration-700 hover:scale-105"
                       onClick={() => setShowImageModal(true)}
+                      onError={(e) => {
+                        e.currentTarget.src = "/No_image_available.svg.webp";
+                      }}
                     />
                   </div>
 
@@ -430,33 +456,54 @@ const ProductDetails = () => {
 
               {/* Quantity & Add to Cart */}
               <div className="bg-gradient-to-br from-white to-[hsl(var(--vanilla))] dark:from-gray-800 dark:to-gray-700 rounded-2xl p-6 shadow-lg border border-[hsl(var(--blush))]/20">
-                <div className="flex items-center justify-between mb-4">
+
+                {/* Sold Out Banner */}
+                {isSoldOut && (
+                  <div className="mb-4 flex items-center justify-center gap-2 bg-red-50 border border-red-200 text-red-700 font-semibold py-3 rounded-xl">
+                    <span className="text-lg">😔</span>
+                    This product is currently <strong>Sold Out</strong>
+                  </div>
+                )}
+
+                <div className={`flex items-center justify-between mb-4 ${isSoldOut ? 'opacity-40 pointer-events-none' : ''}`}>
                   <span className="text-sm font-bold text-[hsl(var(--chocolate))] dark:text-white">Quantity</span>
                   <div className="flex items-center bg-white dark:bg-gray-600 border-2 border-[hsl(var(--honey))]/30 rounded-xl overflow-hidden shadow-sm">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="p-3 hover:bg-[hsl(var(--cream))] dark:hover:bg-gray-500 transition-colors"
+                      disabled={isSoldOut}
+                      className="p-3 hover:bg-[hsl(var(--cream))] dark:hover:bg-gray-500 transition-colors disabled:cursor-not-allowed"
                     >
                       <Minus className="w-4 h-4 text-[hsl(var(--cinnamon))]" />
                     </button>
                     <span className="px-8 py-2 font-bold text-lg text-[hsl(var(--chocolate))] dark:text-white">{quantity}</span>
                     <button
                       onClick={() => setQuantity(quantity + 1)}
-                      className="p-3 hover:bg-[hsl(var(--cream))] dark:hover:bg-gray-500 transition-colors"
+                      disabled={isSoldOut}
+                      className="p-3 hover:bg-[hsl(var(--cream))] dark:hover:bg-gray-500 transition-colors disabled:cursor-not-allowed"
                     >
                       <Plus className="w-4 h-4 text-[hsl(var(--cinnamon))]" />
                     </button>
                   </div>
                 </div>
 
-                <Button
-                  onClick={handleAddToCart}
-                  className="w-full bg-gradient-to-r from-[hsl(var(--cinnamon))] via-[hsl(var(--chocolate))] to-[hsl(var(--cinnamon))] hover:opacity-90 text-white py-6 text-lg font-bold rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl relative overflow-hidden group"
-                >
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></span>
-                  <ShoppingCart className="w-5 h-5 mr-2" />
-                  Add to Basket • {formatCurrency(currentPrice * quantity)}
-                </Button>
+                {isSoldOut ? (
+                  <Button
+                    disabled
+                    className="w-full bg-gray-300 text-gray-500 py-6 text-lg font-bold rounded-xl cursor-not-allowed shadow-none"
+                  >
+                    <ShoppingCart className="w-5 h-5 mr-2" />
+                    Sold Out
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleAddToCart}
+                    className="w-full bg-gradient-to-r from-[hsl(var(--cinnamon))] via-[hsl(var(--chocolate))] to-[hsl(var(--cinnamon))] hover:opacity-90 text-white py-6 text-lg font-bold rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl relative overflow-hidden group"
+                  >
+                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></span>
+                    <ShoppingCart className="w-5 h-5 mr-2" />
+                    Add to Basket • {formatCurrency(currentPrice * quantity)}
+                  </Button>
+                )}
 
                 <p className="text-center text-xs text-gray-600 dark:text-gray-400 mt-3 flex items-center justify-center gap-1">
                   <Sparkles className="w-3 h-3 text-[hsl(var(--honey))]" />
